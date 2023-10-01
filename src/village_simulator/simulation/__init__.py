@@ -1,1 +1,1 @@
-from village_simulator.simulation.population import Population
+from village_simulator.simulation.demographics import Demographics
