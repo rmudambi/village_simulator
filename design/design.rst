@@ -23,9 +23,13 @@ Modeled entities:
 
 - Weather/seasons/climate managed by a vivarium component
 - Population/mortality/fertility
-- Crop yield
+- Crop yield and food stores
+- Livestock
 - Trade?
 - Mining - need access to metal for weapons and agricultural tools (iron or bronze?)
+- Timber
+- Army morale?
+- Population loyalty?
 
 Policies/actions:
 
@@ -34,6 +38,9 @@ Policies/actions:
 - Declare war
 - Build walls
 - Taxation
+- Irrigation
+- Build public works
+- Build roads/bridges
 
 Thoughts/Questions/Ideas:
 
@@ -42,3 +49,4 @@ Thoughts/Questions/Ideas:
 - How to model heterogeneous geography?
 - Should there be a map for the player? Maybe not, since actual leaders at time
   wouldn't have had good maps?
+- Are there different classes that should be modeled?
