@@ -15,4 +15,4 @@ configuration:
             day: 1
         step_size: 30  # Days
     population:
-        population_size: 100_000
+        population_size: 100
