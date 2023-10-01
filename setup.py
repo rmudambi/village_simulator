@@ -52,6 +52,11 @@ if __name__ == "__main__":
         "pytest-mock",
     ]
 
+    lint_requirements = [
+        "black",
+        "isort",
+    ]
+
     setup(
         name=about["__title__"],
         description=about["__summary__"],
@@ -78,7 +83,7 @@ if __name__ == "__main__":
         extras_require={
             "test": test_requirements,
             "interactive": interactive_requirements,
-            "dev": test_requirements + interactive_requirements,
+            "dev": test_requirements + interactive_requirements + lint_requirements,
         },
         # entry_points="""
         #         [console_scripts]
