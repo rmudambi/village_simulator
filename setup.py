@@ -31,7 +31,7 @@ if __name__ == "__main__":
         long_description = f.read()
 
     install_requirements = [
-        "village_simulator",
+        "vivarium",
     ]
 
     setup_requires = ["setuptools_scm"]

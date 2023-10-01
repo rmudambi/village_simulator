@@ -1,0 +1,22 @@
+components:
+    village_simulator:
+        simulation:
+            - Population()
+
+configuration:
+    randomness:
+        key_columns: ['entrance_time']
+    time:
+        start:
+            year: 2000
+            month: 1
+            day: 1
+        end:
+            year: 2006
+            month: 1
+            day: 1
+        step_size: 10  # Days
+    population:
+        population_size: 100_000
+        age_start: 0
+        age_end: 5
