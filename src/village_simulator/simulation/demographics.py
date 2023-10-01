@@ -10,6 +10,8 @@ from vivarium.framework.population import SimulantData
 from vivarium.framework.randomness import RandomnessStream
 from vivarium.framework.values import Pipeline
 
+from village_simulator.simulation.utilities import round_stochastic
+
 POPULATION_SIZE = "population_size"
 
 
@@ -82,7 +84,7 @@ class Demographics(Component):
         mortality_rate = self.mortality_rate(villages.index)
         population_size *= 1.0 + fertility_rate - mortality_rate
 
-        population_size = population_size.round().astype(int)
+        population_size = round_stochastic(population_size, self.randomness, "population_size")
         self.population_view.update(population_size)
 
     ####################

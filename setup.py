@@ -31,6 +31,8 @@ if __name__ == "__main__":
         long_description = f.read()
 
     install_requirements = [
+        "pandas",
+        "scipy",
         "vivarium",
     ]
 
