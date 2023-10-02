@@ -21,7 +21,14 @@ Game aspects:
 
 Modeled entities:
 
-- Weather/seasons/climate managed by a vivarium component
+- Weather/seasons/climate
+    - Could affect
+        - Crop yield
+        - Harvest date(s)
+        - Mortality
+        - Trade?
+        - Natural disasters
+- Plagues/pestilences
 - Population/mortality/fertility
 - Crop yield and food stores
 - Livestock
@@ -41,6 +48,7 @@ Policies/actions:
 - Irrigation
 - Build public works
 - Build roads/bridges
+- Mete out justice
 
 Thoughts/Questions/Ideas:
 
@@ -50,3 +58,10 @@ Thoughts/Questions/Ideas:
 - Should there be a map for the player? Maybe not, since actual leaders at time
   wouldn't have had good maps?
 - Are there different classes that should be modeled?
+- What should harvest quantities be dependent on?
+    - Population?
+    - Land under cultivation?
+    - Livestock?
+- Harvest should be collected over time, not all at once (and per crop)
+- What should inter-village interactions look like?
+- Should we have nomadic/mountain raiders?

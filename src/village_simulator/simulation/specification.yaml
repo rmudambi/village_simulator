@@ -2,6 +2,7 @@ components:
     village_simulator:
         simulation:
             - Demographics()
+            - Food()
 
 configuration:
     time:
@@ -13,6 +14,6 @@ configuration:
             year: 2001
             month: 1
             day: 1
-        step_size: 30  # Days
+        step_size: 7  # Days
     population:
         population_size: 100
