@@ -1,12 +1,10 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import pandas as pd
-from vivarium import Component, ConfigTree
+from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
-from vivarium.framework.randomness import RandomnessStream
-from vivarium.framework.values import Pipeline
 
 from village_simulator.simulation.utilities import (
     round_stochastic,
@@ -24,7 +22,7 @@ class Demographics(Component):
 
     CONFIGURATION_DEFAULTS = {
         "demographics": {
-            "initial_village_size": {"mean": 1_000_000, "standard_deviation": 100},
+            "initial_village_size": {"mean": 1_000, "standard_deviation": 1},
             "initial_sex_ratio": {"mean": 1.0, "standard_deviation": 0.01},
             "fertility_rate": {"mean": 0.15, "standard_deviation": 0.01},
             "mortality_rate": {"mean": 0.1, "standard_deviation": 0.01},
@@ -47,13 +45,6 @@ class Demographics(Component):
     # Lifecycle methods #
     #####################
 
-    def __init__(self):
-        super().__init__()
-        self.configuration: Optional[ConfigTree] = None
-        self.randomness: Optional[RandomnessStream] = None
-        self.fertility_rate: Optional[Pipeline] = None
-        self.mortality_rate: Optional[Pipeline] = None
-
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration.demographics
         self.randomness = builder.randomness.get_stream(self.name)
@@ -62,6 +53,11 @@ class Demographics(Component):
         )
         self.mortality_rate = builder.value.register_rate_producer(
             "mortality_rate", self.get_mortality_rate, requires_streams=[self.name]
+        )
+        self.total_population = builder.value.register_value_producer(
+            "total_population",
+            self.get_total_population,
+            requires_columns=[FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE],
         )
 
     ########################
@@ -129,3 +125,9 @@ class Demographics(Component):
             index, self.configuration.mortality_rate, self.randomness, "male_mortality"
         ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)
+
+    def get_total_population(self, index: pd.Index) -> pd.Series:
+        population = self.population_view.get(index)[
+            [FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE]
+        ]
+        return population.sum(axis=1).rename("total_population")
