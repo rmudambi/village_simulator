@@ -65,3 +65,7 @@ Thoughts/Questions/Ideas:
 - Harvest should be collected over time, not all at once (and per crop)
 - What should inter-village interactions look like?
 - Should we have nomadic/mountain raiders?
+- How to model interactions with other villages/polities?
+    - Diplomacy
+    - War
+    - Opinions
