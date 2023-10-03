@@ -3,6 +3,7 @@ components:
         simulation:
             - Demographics()
             - Food()
+            - Wood()
 
 configuration:
     time:

@@ -12,6 +12,7 @@ from village_simulator.simulation.utilities import (
 )
 
 FOOD = "food"
+WOOD = "wood"
 
 
 class Food(Component):
@@ -125,7 +126,7 @@ class Food(Component):
 
     def get_harvest_quantity(self, index: pd.Index) -> pd.Series:
         """
-        Gets the total amount of food harvested on this time-step.
+        Gets the total amount of food harvested during this time-step.
 
         Right now all food is harvested at a single time in the year
 
@@ -150,6 +151,137 @@ class Food(Component):
             harvest_quantity = pd.Series(0.0, index=index, name="harvest_quantity")
 
         return harvest_quantity
+
+    ##################
+    # Helper methods #
+    ##################
+
+    def _get_total_from_per_capita(self, per_capita_value: pd.Series) -> pd.Series:
+        """Scales the per capita value to a raw value."""
+        return pd.Series(
+            self.total_population(per_capita_value.index) * per_capita_value,
+            name=per_capita_value.name
+        )
+
+
+class Wood(Component):
+    """
+    Component that manages the wood resources of villages in the game.
+    """
+
+    CONFIGURATION_DEFAULTS = {
+        "wood": {
+            "initial_per_capita_wood_stores": {"mean": 50.0, "standard_deviation": 10.0},
+            "annual_per_capita_wood_consumption": {
+                "mean": 15.0,
+                "standard_deviation": 3.0,
+            },
+            "annual_per_capita_wood_accumulation": {"mean": 16.0, "standard_deviation": 5.0},
+        }
+    }
+
+    ##############
+    # Properties #
+    ##############
+
+    @property
+    def columns_created(self) -> List[str]:
+        return [WOOD]
+
+    @property
+    def initialization_requirements(self) -> Dict[str, List[str]]:
+        return {"requires_values": ["total_population"], "requires_streams": [self.name]}
+
+    #####################
+    # Lifecycle methods #
+    #####################
+
+    def setup(self, builder: Builder) -> None:
+        self.configuration = builder.configuration.wood
+        self.initial_village_size = (
+            builder.configuration.demographics.initial_village_size.mean
+        )
+        self.randomness = builder.randomness.get_stream(self.name)
+        self.total_population = builder.value.get_value("total_population")
+
+        self.wood_consumption_rate = builder.value.register_rate_producer(
+            "wood_consumption_rate",
+            self.get_wood_consumption_rate,
+            requires_streams=[self.name],
+        )
+        self.wood_accumulation_rate = builder.value.register_value_producer(
+            "wood_accumulation_rate",
+            self.get_wood_accumulation_rate,
+            requires_streams=[self.name],
+        )
+
+    ########################
+    # Event-driven methods #
+    ########################
+
+    def on_initialize_simulants(self, pop_data: SimulantData) -> None:
+        """
+        Initialize wood stores.
+
+        :param pop_data:
+        :return:
+        """
+        wood = self.initial_village_size * sample_from_normal_distribution(
+            pop_data.index,
+            self.configuration.initial_per_capita_wood_stores,
+            self.randomness,
+            "initial_wood_stores",
+        ).rename(WOOD)
+        self.population_view.update(wood)
+
+    def on_time_step(self, event: Event) -> None:
+        """
+        Consume and accumulate wood.
+
+        :param event:
+        :return:
+        """
+        wood = self.population_view.get(event.index)[WOOD]
+        wood -= self.wood_consumption_rate(event.index)
+        wood += self.wood_accumulation_rate(event.index)
+        self.population_view.update(wood)
+
+    ####################
+    # Pipeline sources #
+    ####################
+
+    def get_wood_consumption_rate(self, index: pd.Index) -> pd.Series:
+        """
+        Gets the rate at which wood is consumed by each village.
+
+        This is an annual rate, which will be rescaled to the time-step by the
+        pipeline's post-processor
+
+        :param index:
+        :return:
+        """
+        wood_consumption_per_capita = sample_from_normal_distribution(
+            index,
+            self.configuration.annual_per_capita_wood_consumption,
+            self.randomness,
+            "wood_consumption_rate",
+        ).rename("wood_consumption_rate")
+        return self._get_total_from_per_capita(wood_consumption_per_capita)
+
+    def get_wood_accumulation_rate(self, index: pd.Index) -> pd.Series:
+        """
+        Gets the total amount of wood accumulated during this time-step.
+
+        :param index:
+        :return:
+        """
+        wood_accumulation_per_capita = sample_from_normal_distribution(
+            index,
+            self.configuration.annual_per_capita_wood_accumulation,
+            self.randomness,
+            "wood_accumulation_rate",
+        ).rename("wood_accumulation_rate")
+        return self._get_total_from_per_capita(wood_accumulation_per_capita)
 
     ##################
     # Helper methods #
