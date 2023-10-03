@@ -1,6 +1,7 @@
 components:
     village_simulator:
         simulation:
+            - Map()
             - Demographics()
             - Food()
             - Resource("wood")
@@ -8,6 +9,8 @@ components:
             - Resource("bronze")
 
 configuration:
+    randomness:
+        key_columns: ["x", "y"]
     time:
         start:
             year: 2000
@@ -19,7 +22,7 @@ configuration:
             day: 1
         step_size: 7  # Days
     population:
-        population_size: 100
+        population_size: 40
 
     wood:
         initial_per_capita_stores:

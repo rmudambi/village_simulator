@@ -2,7 +2,7 @@
 
 Player plays as the leader of a village. Player enacts policies that affect the
 village. Could be loosely modeled on the world of the Sumerians, Vedic Aryans,
-or some other simular civilization.
+or some other similar civilization.
 
 Goal:
 
@@ -15,6 +15,8 @@ Methodology:
 - Vivarium simulates villages as a whole(?)
 - Could consider updating vivarium to support multiple state tables allowing
   weather to be modeled using a different simulation methodology
+    - This could be done by defining a new `population` plugin rather than
+      directly modifying vivarium
 
 Game aspects:
 
@@ -57,7 +59,9 @@ Thoughts/Questions/Ideas:
 
 - How to incorporate religion?
 - Fishing/navy?
-- How to model heterogeneous geography?
+- How to model geography?
+    - Natural features like rivers, mountains, coastlines, forests, deserts
+    - Actual physical location - i.e. location within a grid(?)
 - Should there be a map for the player? Maybe not, since actual leaders at time
   wouldn't have had good maps?
 - Are there different classes that should be modeled?
