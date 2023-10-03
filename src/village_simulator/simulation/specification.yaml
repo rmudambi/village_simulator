@@ -3,7 +3,9 @@ components:
         simulation:
             - Demographics()
             - Food()
-            - Wood()
+            - Resource("wood")
+            - Resource("stone")
+            - Resource("bronze")
 
 configuration:
     time:
@@ -18,3 +20,36 @@ configuration:
         step_size: 7  # Days
     population:
         population_size: 100
+
+    wood:
+        initial_per_capita_stores:
+            mean: 8.0
+            standard_deviation: 2.0
+        annual_per_capita_consumption:
+            mean: 1.5
+            standard_deviation: 0.3
+        annual_per_capita_accumulation:
+            mean: 1.5
+            standard_deviation: 5.0
+
+    stone:
+        initial_per_capita_stores:
+            mean: 5.0
+            standard_deviation: 1.0
+        annual_per_capita_consumption:
+            mean: 0.9
+            standard_deviation: 0.2
+        annual_per_capita_accumulation:
+            mean: 0.9
+            standard_deviation: 0.2
+
+    bronze:
+        initial_per_capita_stores:
+            mean: 3.0
+            standard_deviation: 0.5
+        annual_per_capita_consumption:
+            mean: 1.0
+            standard_deviation: 0.2
+        annual_per_capita_accumulation:
+            mean: 1.0
+            standard_deviation: 0.2
