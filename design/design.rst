@@ -1,8 +1,8 @@
-### Game plan
+**Game plan**
 
-Player plays as the leader of a village. Player enacts policies that affect the village.
-Could be loosely modeled on the world of the Sumerians, Vedic Aryans, or some other simular
-civilization.
+Player plays as the leader of a village. Player enacts policies that affect the
+village. Could be loosely modeled on the world of the Sumerians, Vedic Aryans,
+or some other simular civilization.
 
 Goal:
 
@@ -13,6 +13,8 @@ Methodology:
 
 - Game engine is vivarium
 - Vivarium simulates villages as a whole(?)
+- Could consider updating vivarium to support multiple state tables allowing
+  weather to be modeled using a different simulation methodology
 
 Game aspects:
 
@@ -33,7 +35,8 @@ Modeled entities:
 - Crop yield and food stores
 - Livestock
 - Trade?
-- Mining - need access to metal for weapons and agricultural tools (iron or bronze?)
+- Mining - need access to metal for weapons and agricultural tools (iron or
+  bronze?)
 - Timber
 - Army morale?
 - Population loyalty?

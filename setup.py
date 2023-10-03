@@ -33,6 +33,7 @@ if __name__ == "__main__":
         long_description = f.read()
 
     install_requirements = [
+        "click",
         "numpy",
         "pandas",
         "scipy",
@@ -85,10 +86,10 @@ if __name__ == "__main__":
             "interactive": interactive_requirements,
             "dev": test_requirements + interactive_requirements + lint_requirements,
         },
-        # entry_points="""
-        #         [console_scripts]
-        #         simulate=village_simulator.interface.cli:simulate
-        #     """,
+        entry_points="""
+                [console_scripts]
+                village_simulator=village_simulator.interface.cli:village_simulator
+            """,
         zip_safe=False,
         use_scm_version={
             "write_to": "src/village_simulator/_version.py",
