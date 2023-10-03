@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import pandas as pd
 from vivarium import Component
@@ -162,7 +162,7 @@ class Resource(Component):
         """Scales the per capita value to a raw value."""
         return pd.Series(
             self.total_population(per_capita_value.index) * per_capita_value,
-            name=per_capita_value.name
+            name=per_capita_value.name,
         )
 
 

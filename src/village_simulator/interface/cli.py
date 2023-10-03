@@ -1,13 +1,13 @@
 import click
 from vivarium import InteractiveContext
 
-from village_simulator.interface import actions
 from village_simulator import paths
+from village_simulator.interface import actions
 
 
 @click.group()
 def village_simulator():
-    """ A command line utility for playing the Village Simulator."""
+    """A command line utility for playing the Village Simulator."""
     pass
 
 
@@ -44,5 +44,3 @@ def play(debug: bool):
                 action = actions.invalid_input
 
         flavor_message = action(simulation, user_input=user_input, debug=debug)
-
-

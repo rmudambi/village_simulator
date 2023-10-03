@@ -9,7 +9,7 @@ def _get_date_flavor_text(simulation: InteractiveContext) -> str:
 
 
 def step(simulation: InteractiveContext, **_: Any) -> str:
-    """ Progress the game. """
+    """Progress the game."""
     print(f"\nAdvancing the game by {simulation.configuration.time.step_size} days.\n")
     simulation.step()
     return _get_date_flavor_text(simulation)
