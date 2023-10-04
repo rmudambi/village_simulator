@@ -2,8 +2,6 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from scipy import stats
-from vivarium import ConfigTree
 from vivarium.framework.randomness import RandomnessStream
 from vivarium.framework.time import Time
 
@@ -33,20 +31,6 @@ def round_stochastic(
         )
     else:
         return _round_series_stochastic(values, randomness_stream, additional_key)
-
-
-def sample_from_normal_distribution(
-    index: pd.Index,
-    configuration: ConfigTree,
-    randomness_stream: RandomnessStream,
-    additional_key: str = "",
-) -> pd.Series:
-    values = stats.norm.ppf(
-        randomness_stream.get_draw(index, additional_key),
-        loc=configuration.mean,
-        scale=configuration.standard_deviation,
-    )
-    return pd.Series(values)
 
 
 def get_next_annual_event_date(

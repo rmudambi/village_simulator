@@ -2,6 +2,7 @@ components:
     village_simulator:
         simulation:
             - Map()
+            - Weather()
             - Demographics()
             - Food()
             - Resource("wood")
@@ -20,39 +21,39 @@ configuration:
             year: 2001
             month: 1
             day: 1
-        step_size: 7  # Days
+        step_size: 1  # Days
     population:
         population_size: 40
 
     wood:
         initial_per_capita_stores:
-            mean: 8.0
-            standard_deviation: 2.0
+            loc: 8.0
+            scale: 2.0
         annual_per_capita_consumption:
-            mean: 1.5
-            standard_deviation: 0.3
+            loc: 1.5
+            scale: 0.3
         annual_per_capita_accumulation:
-            mean: 1.5
-            standard_deviation: 5.0
+            loc: 1.5
+            scale: 5.0
 
     stone:
         initial_per_capita_stores:
-            mean: 5.0
-            standard_deviation: 1.0
+            loc: 5.0
+            scale: 1.0
         annual_per_capita_consumption:
-            mean: 0.9
-            standard_deviation: 0.2
+            loc: 0.9
+            scale: 0.2
         annual_per_capita_accumulation:
-            mean: 0.9
-            standard_deviation: 0.2
+            loc: 0.9
+            scale: 0.2
 
     bronze:
         initial_per_capita_stores:
-            mean: 3.0
-            standard_deviation: 0.5
+            loc: 3.0
+            scale: 0.5
         annual_per_capita_consumption:
-            mean: 1.0
-            standard_deviation: 0.2
+            loc: 1.0
+            scale: 0.2
         annual_per_capita_accumulation:
-            mean: 1.0
-            standard_deviation: 0.2
+            loc: 1.0
+            scale: 0.2

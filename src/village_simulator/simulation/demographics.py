@@ -6,10 +6,8 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.utilities import (
-    round_stochastic,
-    sample_from_normal_distribution,
-)
+from village_simulator.simulation.sampling import sample_from_distribution
+from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
 MALE_POPULATION_SIZE = "male_population_size"
@@ -22,10 +20,10 @@ class Demographics(Component):
 
     CONFIGURATION_DEFAULTS = {
         "demographics": {
-            "initial_village_size": {"mean": 1_000, "standard_deviation": 1},
-            "initial_sex_ratio": {"mean": 1.0, "standard_deviation": 0.01},
-            "fertility_rate": {"mean": 0.15, "standard_deviation": 0.01},
-            "mortality_rate": {"mean": 0.1, "standard_deviation": 0.01},
+            "initial_village_size": {"distribution": "normal", "loc": 1_000, "scale": 1.0},
+            "initial_sex_ratio": {"distribution": "normal", "loc": 1.0, "scale": 0.01},
+            "fertility_rate": {"distribution": "normal", "loc": 0.15, "scale": 0.01},
+            "mortality_rate": {"distribution": "normal", "loc": 0.1, "scale": 0.01},
         }
     }
 
@@ -65,18 +63,18 @@ class Demographics(Component):
     ########################
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
-        village_size = sample_from_normal_distribution(
-            pop_data.index,
+        village_size = sample_from_distribution(
             self.configuration.initial_village_size,
             self.randomness,
             "initial_village_size",
+            pop_data.index,
         )
 
-        sex_ratio = sample_from_normal_distribution(
-            pop_data.index,
+        sex_ratio = sample_from_distribution(
             self.configuration.initial_sex_ratio,
             self.randomness,
             "initial_sex_ratio",
+            pop_data.index,
         )
 
         female_village_size = round_stochastic(
@@ -109,20 +107,20 @@ class Demographics(Component):
     ####################
 
     def get_fertility_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_fertility_rate = sample_from_normal_distribution(
-            index, self.configuration.fertility_rate, self.randomness, "female_fertility"
+        female_fertility_rate = sample_from_distribution(
+            self.configuration.fertility_rate, self.randomness, "female_fertility", index
         ).rename(FEMALE_POPULATION_SIZE)
-        male_fertility_rate = sample_from_normal_distribution(
-            index, self.configuration.fertility_rate, self.randomness, "male_fertility"
+        male_fertility_rate = sample_from_distribution(
+            self.configuration.fertility_rate, self.randomness, "male_fertility", index
         ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_fertility_rate, male_fertility_rate], axis=1)
 
     def get_mortality_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_mortality_rate = sample_from_normal_distribution(
-            index, self.configuration.mortality_rate, self.randomness, "female_mortality"
+        female_mortality_rate = sample_from_distribution(
+            self.configuration.mortality_rate, self.randomness, "female_mortality", index
         ).rename(FEMALE_POPULATION_SIZE)
-        male_mortality_rate = sample_from_normal_distribution(
-            index, self.configuration.mortality_rate, self.randomness, "male_mortality"
+        male_mortality_rate = sample_from_distribution(
+            self.configuration.mortality_rate, self.randomness, "male_mortality", index
         ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)
 

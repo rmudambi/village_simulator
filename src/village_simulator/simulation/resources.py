@@ -6,10 +6,8 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.utilities import (
-    get_next_annual_event_date,
-    sample_from_normal_distribution,
-)
+from village_simulator.simulation.sampling import sample_from_distribution
+from village_simulator.simulation.utilities import get_next_annual_event_date
 
 FOOD = "food"
 WOOD = "wood"
@@ -22,9 +20,17 @@ class Resource(Component):
 
     CONFIGURATION_DEFAULTS = {
         "resource": {
-            "initial_per_capita_stores": {"mean": 1.0, "standard_deviation": 0.1},
-            "annual_per_capita_consumption": {"mean": 1.0, "standard_deviation": 0.1},
-            "annual_per_capita_accumulation": {"mean": 1.0, "standard_deviation": 0.1},
+            "initial_per_capita_stores": {"distribution": "normal", "loc": 1.0, "scale": 0.1},
+            "annual_per_capita_consumption": {
+                "distribution": "normal",
+                "loc": 1.0,
+                "scale": 0.1,
+            },
+            "annual_per_capita_accumulation": {
+                "distribution": "normal",
+                "loc": 1.0,
+                "scale": 0.1,
+            },
         }
     }
 
@@ -55,7 +61,7 @@ class Resource(Component):
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration[self.resource]
         self.initial_village_size = (
-            builder.configuration.demographics.initial_village_size.mean
+            builder.configuration.demographics.initial_village_size.loc
         )
         self.randomness = builder.randomness.get_stream(self.name)
         self.total_population = builder.value.get_value("total_population")
@@ -69,7 +75,7 @@ class Resource(Component):
 
     def register_accumulation(self, builder):
         return builder.value.register_rate_producer(
-            f"{self.resource}.accumulation_rate",
+            f"{self.resource}.accumulation",
             self.get_accumulation_rate,
             requires_values=["total_population"],
             requires_streams=[self.name],
@@ -77,7 +83,7 @@ class Resource(Component):
 
     def register_consumption(self, builder):
         return builder.value.register_rate_producer(
-            f"{self.resource}.consumption_rate",
+            f"{self.resource}.consumption",
             self.get_consumption_rate,
             requires_values=["total_population"],
             requires_streams=[self.name],
@@ -94,13 +100,13 @@ class Resource(Component):
         :param pop_data:
         :return:
         """
-        stores = self.initial_village_size * sample_from_normal_distribution(
-            pop_data.index,
+        stores = self.initial_village_size * sample_from_distribution(
             self.configuration.initial_per_capita_stores,
             self.randomness,
             "initial_stores",
-        ).rename(self.resource)
-        self.population_view.update(stores)
+            pop_data.index,
+        )
+        self.population_view.update(stores.rename(self.resource))
 
     def on_time_step(self, event: Event) -> None:
         """
@@ -128,12 +134,12 @@ class Resource(Component):
         :param index:
         :return:
         """
-        consumption_per_capita = sample_from_normal_distribution(
-            index,
+        consumption_per_capita = sample_from_distribution(
             self.configuration.annual_per_capita_consumption,
             self.randomness,
-            "consumption_rate",
-        ).rename(f"{self.resource}.consumption_rate")
+            f"{self.resource}.consumption",
+            index,
+        )
         return self.get_total_from_per_capita(consumption_per_capita)
 
     def get_accumulation_rate(self, index: pd.Index) -> pd.Series:
@@ -146,12 +152,12 @@ class Resource(Component):
         :param index:
         :return:
         """
-        accumulation_per_capita = sample_from_normal_distribution(
-            index,
+        accumulation_per_capita = sample_from_distribution(
             self.configuration.annual_per_capita_accumulation,
             self.randomness,
-            "accumulation_rate",
-        ).rename(f"{self.resource}.accumulation_rate")
+            f"{self.resource}.accumulation",
+            index,
+        )
         return self.get_total_from_per_capita(accumulation_per_capita)
 
     ##################
@@ -173,9 +179,21 @@ class Food(Resource):
 
     CONFIGURATION_DEFAULTS = {
         "food": {
-            "initial_per_capita_stores": {"mean": 10.0, "standard_deviation": 0.5},
-            "annual_per_capita_consumption": {"mean": 10.0, "standard_deviation": 0.5},
-            "annual_per_capita_accumulation": {"mean": 10.0, "standard_deviation": 0.5},
+            "initial_per_capita_stores": {
+                "distribution": "normal",
+                "loc": 10.0,
+                "scale": 0.5,
+            },
+            "annual_per_capita_consumption": {
+                "distribution": "normal",
+                "loc": 10.0,
+                "scale": 0.5,
+            },
+            "annual_per_capita_accumulation": {
+                "distribution": "normal",
+                "loc": 10.0,
+                "scale": 0.5,
+            },
             "harvest_date": {"month": 9, "day": 15},
         }
     }
@@ -206,7 +224,7 @@ class Food(Resource):
 
     def register_accumulation(self, builder):
         return builder.value.register_value_producer(
-            f"{self.resource}.accumulation_rate",
+            f"{self.resource}.accumulation",
             self.get_harvest_quantity,
             requires_values=["total_population"],
             requires_streams=[self.name],
@@ -232,14 +250,14 @@ class Food(Resource):
             self.configuration.harvest_date.day,
         )
         if clock_time < next_harvest_date <= clock_time + self.step_size():
-            harvest_per_capita = sample_from_normal_distribution(
-                index,
+            harvest_per_capita = sample_from_distribution(
                 self.configuration.base_harvest_per_capita,
                 self.randomness,
-                "base_harvest",
-            ).rename("harvest_quantity")
+                f"{self.resource}.accumulation",
+                index,
+            )
             harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
         else:
-            harvest_quantity = pd.Series(0.0, index=index, name="harvest_quantity")
+            harvest_quantity = pd.Series(0.0, index=index, name=f"{self.resource}.accumulation")
 
         return harvest_quantity
