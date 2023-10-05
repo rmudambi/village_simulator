@@ -6,6 +6,9 @@ from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.population import SimulantData
 
+X = "x"
+Y = "y"
+
 
 class Map(Component):
     """A component that creates and manages the map"""
@@ -23,7 +26,7 @@ class Map(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return ["x", "y"]
+        return [X, Y]
 
     #####################
     # Lifecycle methods #
@@ -38,7 +41,7 @@ class Map(Component):
         width = self.configuration.dimensions.x
         height = self.configuration.dimensions.y
         coordinates = pd.DataFrame(
-            itertools.product(range(width), range(height)), columns=["x", "y"]
+            itertools.product(range(width), range(height)), columns=[X, Y]
         )
 
         self.register_simulants(coordinates[self.key_columns])

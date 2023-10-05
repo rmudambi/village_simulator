@@ -25,7 +25,7 @@ def play(debug: bool):
     flavor_message = "It is the year 3000 BC. You are the chieftain of a small village.\n"
     base_message = (
         "What would you like to do now?"
-        "\n\nOptions:\n\t- observe (o)\n\t- step (s)\n\t- exit (x)\n"
+        "\n\nOptions:\n\t- observe (o)\n\t- show map (m)\n\t- step (s)\n\t- exit (x)\n"
     )
 
     playing = True
@@ -35,6 +35,8 @@ def play(debug: bool):
         match user_input:
             case "observe" | "o":
                 action = actions.observe
+            case "show map" | "m":
+                action = actions.show_map
             case "step" | "s":
                 action = actions.step
             case "exit" | "x":

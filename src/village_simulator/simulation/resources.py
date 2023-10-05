@@ -258,6 +258,8 @@ class Food(Resource):
             )
             harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
         else:
-            harvest_quantity = pd.Series(0.0, index=index, name=f"{self.resource}.accumulation")
+            harvest_quantity = pd.Series(
+                0.0, index=index, name=f"{self.resource}.accumulation"
+            )
 
         return harvest_quantity
