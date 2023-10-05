@@ -8,6 +8,7 @@ from vivarium.framework.population import SimulantData
 
 X = "x"
 Y = "y"
+FEATURE = "feature"
 
 
 class Map(Component):
@@ -26,7 +27,7 @@ class Map(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [X, Y]
+        return [X, Y, FEATURE]
 
     #####################
     # Lifecycle methods #
@@ -34,6 +35,7 @@ class Map(Component):
 
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration.map
+        self.randomness = builder.randomness.get_stream(self.name)
         self.key_columns = builder.configuration.randomness.key_columns
         self.register_simulants = builder.randomness.register_simulants
 
@@ -46,3 +48,8 @@ class Map(Component):
 
         self.register_simulants(coordinates[self.key_columns])
         self.population_view.update(coordinates)
+
+        feature = self.randomness.choice(
+            pop_data.index, ["village", "forest"], [0.1, 0.9], "initialize_features"
+        ).rename(FEATURE)
+        self.population_view.update(feature)

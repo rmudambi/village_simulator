@@ -31,4 +31,4 @@ def sample_from_distribution(
     values = _DISTRIBUTIONS[configuration.distribution](
         randomness_stream.get_draw(index, additional_key), **params
     )
-    return pd.Series(values, name=additional_key)
+    return pd.Series(values, index=index, name=additional_key)

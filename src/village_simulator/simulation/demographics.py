@@ -1,11 +1,13 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
+from village_simulator.simulation.map import FEATURE
 from village_simulator.simulation.sampling import sample_from_distribution
 from village_simulator.simulation.utilities import round_stochastic
 
@@ -36,8 +38,19 @@ class Demographics(Component):
         return [FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE]
 
     @property
+    def columns_required(self) -> List[str]:
+        return [FEATURE]
+
+    @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_streams": [self.name]}
+        return {
+            "requires_columns": [FEATURE],
+            "requires_streams": [self.name]
+        }
+
+    @property
+    def population_view_query(self) -> Optional[str]:
+        return f"{FEATURE} == 'village'"
 
     #####################
     # Lifecycle methods #
@@ -63,28 +76,33 @@ class Demographics(Component):
     ########################
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
+        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
+        village_index = feature[feature == "village"].index
+        female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
+        male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
+
         village_size = sample_from_distribution(
             self.configuration.initial_village_size,
             self.randomness,
             "initial_village_size",
-            pop_data.index,
+            village_index,
         )
 
         sex_ratio = sample_from_distribution(
             self.configuration.initial_sex_ratio,
             self.randomness,
             "initial_sex_ratio",
-            pop_data.index,
+            village_index,
         )
 
-        female_village_size = round_stochastic(
+        female_village_size[village_index] = round_stochastic(
             village_size * sex_ratio / 2.0, self.randomness, "initial_female_village_size"
-        ).rename(FEMALE_POPULATION_SIZE)
-        male_village_size = round_stochastic(
+        )
+        male_village_size[village_index] = round_stochastic(
             village_size * (1.0 - sex_ratio / 2.0),
             self.randomness,
             "initial_male_village_size",
-        ).rename(MALE_POPULATION_SIZE)
+        )
 
         self.population_view.update(
             pd.concat([female_village_size, male_village_size], axis=1)

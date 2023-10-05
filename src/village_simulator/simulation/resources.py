@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from vivarium import Component
@@ -6,11 +6,9 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
+from village_simulator.simulation.map import FEATURE
 from village_simulator.simulation.sampling import sample_from_distribution
 from village_simulator.simulation.utilities import get_next_annual_event_date
-
-FOOD = "food"
-WOOD = "wood"
 
 
 class Resource(Component):
@@ -44,11 +42,19 @@ class Resource(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [self.resource]
+        return [self.resource_stores]
+
+    @property
+    def columns_required(self) -> List[str]:
+        return [FEATURE]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
         return {"requires_values": ["total_population"], "requires_streams": [self.name]}
+
+    @property
+    def population_view_query(self) -> Optional[str]:
+        return f"{FEATURE} == 'village'"
 
     #####################
     # Lifecycle methods #
@@ -57,6 +63,7 @@ class Resource(Component):
     def __init__(self, resource: str):
         super().__init__()
         self.resource = resource
+        self.resource_stores = f"{self.resource}_stores"
 
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration[self.resource]
@@ -100,13 +107,17 @@ class Resource(Component):
         :param pop_data:
         :return:
         """
-        stores = self.initial_village_size * sample_from_distribution(
+        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
+        village_index = feature[feature == "village"].index
+        stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
+
+        stores[village_index] = self.initial_village_size * sample_from_distribution(
             self.configuration.initial_per_capita_stores,
             self.randomness,
-            "initial_stores",
-            pop_data.index,
+            self.resource,
+            village_index,
         )
-        self.population_view.update(stores.rename(self.resource))
+        self.population_view.update(stores)
 
     def on_time_step(self, event: Event) -> None:
         """
@@ -115,7 +126,7 @@ class Resource(Component):
         :param event:
         :return:
         """
-        resource = self.population_view.get(event.index)[self.resource]
+        resource = self.population_view.get(event.index)[self.resource_stores]
         resource -= self.consumption(event.index)
         resource += self.accumulation(event.index)
         self.population_view.update(resource)
@@ -166,10 +177,7 @@ class Resource(Component):
 
     def get_total_from_per_capita(self, per_capita_value: pd.Series) -> pd.Series:
         """Scales the per capita value to a raw value."""
-        return pd.Series(
-            self.total_population(per_capita_value.index) * per_capita_value,
-            name=per_capita_value.name,
-        )
+        return self.total_population(per_capita_value.index) * per_capita_value
 
 
 class Food(Resource):
@@ -211,7 +219,7 @@ class Food(Resource):
     #####################
 
     def __init__(self):
-        super().__init__(FOOD)
+        super().__init__("food")
 
     def setup(self, builder: Builder) -> None:
         super().setup(builder)
