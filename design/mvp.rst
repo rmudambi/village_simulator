@@ -14,6 +14,7 @@ Minimal "viable" product
             - Desert
             - Sea
             - Grassland
+        - Elevation?
         - Villages are distributed sparsely across the map
         - The probability of a square having a village depends on its terrain
           type

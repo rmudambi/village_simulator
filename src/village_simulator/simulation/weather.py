@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.sampling import sample_from_distribution
+from village_simulator.simulation import sampling
 
 
 class Weather(Component):
@@ -15,12 +15,24 @@ class Weather(Component):
 
     CONFIGURATION_DEFAULTS = {
         "weather": {
-            "temperature_fahrenheit": {"distribution": "normal", "loc": 65.5, "scale": 15.0},
-            "daily_rainfall": {
-                "distribution": "zero_inflated_gamma",
-                "zero_probability": 0.65,
-                "shape": 0.9902,
-                "scale": 10.0,
+            "temperature_fahrenheit": {
+                "distribution": "normal",
+                "loc": {
+                    "distribution": "normal",
+                    "loc": 65.5,
+                    "scale": 15.0,
+                },
+                "scale": 3.0,
+            },
+            "rainfall": {
+                "distribution": "stretched_truncnorm",
+                "loc": {
+                    "distribution": "zero_inflated_gamma",
+                    "zero_probability": 0.65,
+                    "shape": 0.9902,
+                    "scale": 10.0,
+                },
+                "scale": 0.1,
             },
         }
     }
@@ -53,15 +65,15 @@ class Weather(Component):
         )
 
     def on_time_step_prepare(self, event: Event) -> None:
-        temperature = sample_from_distribution(
+        temperature = sampling.from_configuration(
             self.configuration.temperature_fahrenheit,
             self.randomness,
             "temperature",
             event.index,
         )
 
-        rainfall = sample_from_distribution(
-            self.configuration.daily_rainfall, self.randomness, "daily_rainfall", event.index
+        rainfall = sampling.from_configuration(
+            self.configuration.rainfall, self.randomness, "daily_rainfall", event.index
         )
 
         self.population_view.update(pd.concat([temperature, rainfall], axis=1))

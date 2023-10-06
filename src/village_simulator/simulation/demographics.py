@@ -1,14 +1,13 @@
 from typing import Dict, List, Optional
 
-import numpy as np
 import pandas as pd
 from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
+from village_simulator.simulation import sampling
 from village_simulator.simulation.map import FEATURE
-from village_simulator.simulation.sampling import sample_from_distribution
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -43,10 +42,7 @@ class Demographics(Component):
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {
-            "requires_columns": [FEATURE],
-            "requires_streams": [self.name]
-        }
+        return {"requires_columns": [FEATURE], "requires_streams": [self.name]}
 
     @property
     def population_view_query(self) -> Optional[str]:
@@ -81,14 +77,14 @@ class Demographics(Component):
         female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
         male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
 
-        village_size = sample_from_distribution(
+        village_size = sampling.from_configuration(
             self.configuration.initial_village_size,
             self.randomness,
             "initial_village_size",
             village_index,
         )
 
-        sex_ratio = sample_from_distribution(
+        sex_ratio = sampling.from_configuration(
             self.configuration.initial_sex_ratio,
             self.randomness,
             "initial_sex_ratio",
@@ -125,19 +121,19 @@ class Demographics(Component):
     ####################
 
     def get_fertility_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_fertility_rate = sample_from_distribution(
+        female_fertility_rate = sampling.from_configuration(
             self.configuration.fertility_rate, self.randomness, "female_fertility", index
         ).rename(FEMALE_POPULATION_SIZE)
-        male_fertility_rate = sample_from_distribution(
+        male_fertility_rate = sampling.from_configuration(
             self.configuration.fertility_rate, self.randomness, "male_fertility", index
         ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_fertility_rate, male_fertility_rate], axis=1)
 
     def get_mortality_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_mortality_rate = sample_from_distribution(
+        female_mortality_rate = sampling.from_configuration(
             self.configuration.mortality_rate, self.randomness, "female_mortality", index
         ).rename(FEMALE_POPULATION_SIZE)
-        male_mortality_rate = sample_from_distribution(
+        male_mortality_rate = sampling.from_configuration(
             self.configuration.mortality_rate, self.randomness, "male_mortality", index
         ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)

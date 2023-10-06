@@ -6,8 +6,8 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
+from village_simulator.simulation import sampling
 from village_simulator.simulation.map import FEATURE
-from village_simulator.simulation.sampling import sample_from_distribution
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
 
@@ -111,7 +111,7 @@ class Resource(Component):
         village_index = feature[feature == "village"].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
-        stores[village_index] = self.initial_village_size * sample_from_distribution(
+        stores[village_index] = self.initial_village_size * sampling.from_configuration(
             self.configuration.initial_per_capita_stores,
             self.randomness,
             self.resource,
@@ -145,7 +145,7 @@ class Resource(Component):
         :param index:
         :return:
         """
-        consumption_per_capita = sample_from_distribution(
+        consumption_per_capita = sampling.from_configuration(
             self.configuration.annual_per_capita_consumption,
             self.randomness,
             f"{self.resource}.consumption",
@@ -163,7 +163,7 @@ class Resource(Component):
         :param index:
         :return:
         """
-        accumulation_per_capita = sample_from_distribution(
+        accumulation_per_capita = sampling.from_configuration(
             self.configuration.annual_per_capita_accumulation,
             self.randomness,
             f"{self.resource}.accumulation",
@@ -258,7 +258,7 @@ class Food(Resource):
             self.configuration.harvest_date.day,
         )
         if clock_time < next_harvest_date <= clock_time + self.step_size():
-            harvest_per_capita = sample_from_distribution(
+            harvest_per_capita = sampling.from_configuration(
                 self.configuration.base_harvest_per_capita,
                 self.randomness,
                 f"{self.resource}.accumulation",
