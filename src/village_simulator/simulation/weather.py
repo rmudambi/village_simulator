@@ -16,18 +16,18 @@ class Weather(Component):
     CONFIGURATION_DEFAULTS = {
         "weather": {
             "temperature_fahrenheit": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": {
-                    "distribution": "normal",
+                    "distribution": sampling.NORMAL,
                     "loc": 65.5,
                     "scale": 15.0,
                 },
                 "scale": 3.0,
             },
             "rainfall": {
-                "distribution": "stretched_truncnorm",
+                "distribution": sampling.STRETCHED_TRUNCNORM,
                 "loc": {
-                    "distribution": "zero_inflated_gamma",
+                    "distribution": sampling.ZERO_INFLATED_GAMMA,
                     "zero_probability": 0.65,
                     "shape": 0.9902,
                     "scale": 10.0,

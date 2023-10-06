@@ -21,10 +21,14 @@ class Demographics(Component):
 
     CONFIGURATION_DEFAULTS = {
         "demographics": {
-            "initial_village_size": {"distribution": "normal", "loc": 1_000, "scale": 1.0},
-            "initial_sex_ratio": {"distribution": "normal", "loc": 1.0, "scale": 0.01},
-            "fertility_rate": {"distribution": "normal", "loc": 0.15, "scale": 0.01},
-            "mortality_rate": {"distribution": "normal", "loc": 0.1, "scale": 0.01},
+            "initial_village_size": {
+                "distribution": sampling.NORMAL,
+                "loc": 1_000,
+                "scale": 1.0,
+            },
+            "initial_sex_ratio": {"distribution": sampling.NORMAL, "loc": 1.0, "scale": 0.01},
+            "fertility_rate": {"distribution": sampling.NORMAL, "loc": 0.15, "scale": 0.01},
+            "mortality_rate": {"distribution": sampling.NORMAL, "loc": 0.1, "scale": 0.01},
         }
     }
 

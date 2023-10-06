@@ -18,14 +18,18 @@ class Resource(Component):
 
     CONFIGURATION_DEFAULTS = {
         "resource": {
-            "initial_per_capita_stores": {"distribution": "normal", "loc": 1.0, "scale": 0.1},
+            "initial_per_capita_stores": {
+                "distribution": sampling.NORMAL,
+                "loc": 1.0,
+                "scale": 0.1,
+            },
             "annual_per_capita_consumption": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": 1.0,
                 "scale": 0.1,
             },
             "annual_per_capita_accumulation": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": 1.0,
                 "scale": 0.1,
             },
@@ -188,17 +192,17 @@ class Food(Resource):
     CONFIGURATION_DEFAULTS = {
         "food": {
             "initial_per_capita_stores": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": 10.0,
                 "scale": 0.5,
             },
             "annual_per_capita_consumption": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": 10.0,
                 "scale": 0.5,
             },
             "annual_per_capita_accumulation": {
-                "distribution": "normal",
+                "distribution": sampling.NORMAL,
                 "loc": 10.0,
                 "scale": 0.5,
             },
