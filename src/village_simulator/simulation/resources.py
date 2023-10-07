@@ -5,8 +5,10 @@ from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
+from vivarium.framework.time import get_time_stamp
 
 from village_simulator.simulation import sampling
+from village_simulator.simulation.constants import DAYS_PER_YEAR
 from village_simulator.simulation.map import FEATURE
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
@@ -229,6 +231,11 @@ class Food(Resource):
         super().setup(builder)
         self.clock = builder.time.clock()
         self.step_size = builder.time.step_size()
+        self. next_harvest_date = get_next_annual_event_date(
+            get_time_stamp(builder.configuration.time.start),
+            self.configuration.harvest_date.month,
+            self.configuration.harvest_date.day,
+        )
 
     #################
     # Setup methods #
@@ -256,19 +263,15 @@ class Food(Resource):
         :return:
         """
         clock_time = self.clock()
-        next_harvest_date = get_next_annual_event_date(
-            clock_time,
-            self.configuration.harvest_date.month,
-            self.configuration.harvest_date.day,
-        )
-        if clock_time < next_harvest_date <= clock_time + self.step_size():
+        if clock_time < self.next_harvest_date <= clock_time + self.step_size():
             harvest_per_capita = sampling.from_configuration(
-                self.configuration.base_harvest_per_capita,
+                self.configuration.annual_per_capita_accumulation,
                 self.randomness,
                 f"{self.resource}.accumulation",
                 index,
             )
             harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
+            self.next_harvest_date += pd.Timedelta(days=DAYS_PER_YEAR)
         else:
             harvest_quantity = pd.Series(
                 0.0, index=index, name=f"{self.resource}.accumulation"
