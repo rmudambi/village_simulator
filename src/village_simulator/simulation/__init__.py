@@ -1,4 +1,2 @@
-from village_simulator.simulation.demographics import Demographics
-from village_simulator.simulation.map import Map
-from village_simulator.simulation.resources import Food, Resource
-from village_simulator.simulation.weather import Weather
+from village_simulator.simulation.components.resources import Food, Resource
+from village_simulator.simulation.components.weather import Weather

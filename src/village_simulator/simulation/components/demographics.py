@@ -7,7 +7,7 @@ from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
 from village_simulator.simulation import sampling
-from village_simulator.simulation.map import FEATURE
+from village_simulator.simulation.components.map import FEATURE
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"

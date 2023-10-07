@@ -3,7 +3,7 @@ from typing import Any
 import numpy as np
 from vivarium import InteractiveContext
 
-from village_simulator.simulation.map import FEATURE, X, Y
+from village_simulator.simulation.components.map import FEATURE, X, Y
 
 
 def _get_date_flavor_text(simulation: InteractiveContext) -> str:
