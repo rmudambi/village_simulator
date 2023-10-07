@@ -231,7 +231,7 @@ class Food(Resource):
         super().setup(builder)
         self.clock = builder.time.clock()
         self.step_size = builder.time.step_size()
-        self. next_harvest_date = get_next_annual_event_date(
+        self.next_harvest_date = get_next_annual_event_date(
             get_time_stamp(builder.configuration.time.start),
             self.configuration.harvest_date.month,
             self.configuration.harvest_date.day,

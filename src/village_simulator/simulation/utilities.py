@@ -6,6 +6,8 @@ from vivarium import ConfigTree
 from vivarium.framework.randomness import RandomnessStream
 from vivarium.framework.time import Time
 
+from village_simulator.simulation.constants import ONE_YEAR
+
 
 def _round_series_stochastic(
     values: pd.Series, randomness_stream: RandomnessStream, additional_key: str = ""
@@ -52,3 +54,14 @@ def get_next_annual_event_date(
         event_year = clock_time.year + 1
 
     return pd.Timestamp(event_year, event_month, event_day)
+
+
+def get_value_from_annual_cycle(config: ConfigTree, time: Time) -> float:
+    min_day = get_annual_time_stamp(time.year, config.min_date)
+    distance_from_minimum = (time - min_day) / ONE_YEAR
+
+    mean = (config.max + config.min) * 0.5
+    amplitude = 0.5 * (config.max - config.min)
+
+    value = mean - amplitude * np.cos(2 * np.pi * distance_from_minimum)
+    return value

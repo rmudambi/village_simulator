@@ -6,11 +6,9 @@ from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
-from vivarium.framework.time import Time
 
 from village_simulator.simulation import sampling
-from village_simulator.simulation.constants import ONE_YEAR
-from village_simulator.simulation.utilities import get_annual_time_stamp
+from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
 
 class Weather(Component):
@@ -28,14 +26,15 @@ class Weather(Component):
                 "local_variability": 2.0,
             },
             "rainfall": {
-                "distribution": sampling.STRETCHED_TRUNCNORM,
-                "loc": {
-                    "distribution": sampling.ZERO_INFLATED_GAMMA,
-                    "zero_probability": 0.65,
-                    "shape": 0.9902,
-                    "scale": 10.0,
+                "seasonality": {
+                    "min": 0.1,
+                    "max": 1.0,
+                    "min_date": {"month": 2, "day": 15},
                 },
-                "scale": 0.1,
+                "dry_probability": 0.55,
+                "gamma_shape_parameter": 0.9902,
+                "gamma_scale_parameter": 15.0,
+                "local_variability": 0.05,
             },
         }
     }
@@ -61,7 +60,11 @@ class Weather(Component):
         self.randomness = builder.randomness.get_stream(self.name)
 
         self.get_temperature = builder.value.register_value_producer(
-            "temperature_distribution", self.temperature_source
+            "temperature", self.temperature_source
+        )
+
+        self.get_rainfall = builder.value.register_value_producer(
+            "rainfall", self.rainfall_source
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
@@ -73,11 +76,7 @@ class Weather(Component):
 
     def on_time_step_prepare(self, event: Event) -> None:
         temperature = self.get_temperature(event)
-
-        rainfall = sampling.from_configuration(
-            self.configuration.rainfall, self.randomness, "rainfall", event.index
-        )
-
+        rainfall = self.get_rainfall(event)
         self.population_view.update(pd.concat([temperature, rainfall], axis=1))
 
     ####################
@@ -87,7 +86,7 @@ class Weather(Component):
     def temperature_source(self, event: Event) -> pd.Series:
         config = self.configuration.temperature
 
-        expected_temperature = self.get_expected_seasonal_temperature(event.time)
+        expected_temperature = get_value_from_annual_cycle(config.seasonality, event.time)
         regional_temperature_dist = sampling.FrozenDistribution(
             sampling.NORMAL,
             {"loc": expected_temperature, "scale": config.stochastic_variability},
@@ -104,14 +103,29 @@ class Weather(Component):
         )
         return composite_distribution.sample()
 
-    def get_expected_seasonal_temperature(self, time: Time) -> float:
-        config = self.configuration.temperature.seasonality
+    def rainfall_source(self, event: Event) -> pd.Series:
+        config = self.configuration.rainfall
 
-        min_day = get_annual_time_stamp(time.year, config.min_date)
-        distance_from_minimum = (time - min_day) / ONE_YEAR
+        aridity_factor = get_value_from_annual_cycle(config.seasonality, event.time)
+        dry_probability = 1 - aridity_factor * (1 - config.dry_probability)
+        scale = aridity_factor * config.gamma_scale_parameter
 
-        mean_temp = (config.max + config.min) * 0.5
-        amplitude = 0.5 * (config.max - config.min)
+        regional_rainfall_dist = sampling.FrozenDistribution(
+            sampling.ZERO_INFLATED_GAMMA,
+            {
+                "zero_probability": dry_probability,
+                "shape": config.gamma_shape_parameter,
+                "scale": scale,
+            },
+            self.randomness,
+            "regional_rainfall",
+        )
 
-        temperature = mean_temp - amplitude * np.cos(2 * np.pi * distance_from_minimum)
-        return temperature
+        composite_distribution = sampling.FrozenDistribution(
+            sampling.STRETCHED_TRUNCNORM,
+            {"loc": regional_rainfall_dist, "scale": config.local_variability},
+            self.randomness,
+            "rainfall",
+            event.index,
+        )
+        return composite_distribution.sample()
