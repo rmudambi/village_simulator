@@ -40,23 +40,28 @@ ZERO_INFLATED_GAMMA = Distribution("zero_inflated_gamma", _zero_inflated_gamma_p
 @dataclasses.dataclass
 class FrozenDistribution:
     distribution: Distribution
-    params: Dict[str, float]
+    params: Dict[str, Union[float, "FrozenDistribution"]]
+    randomness_stream: RandomnessStream
+    additional_key: str
+    index: pd.Index = None
 
-    def sample(
-        self, randomness_stream: RandomnessStream, additional_key: str, index: pd.Index = None
-    ) -> Union[float, pd.Series]:
+    def sample(self) -> Union[float, pd.Series]:
         # fixme: this would be much simpler if RandomnessStream could return a scalar
-        if index is None:
-            quantiles = randomness_stream.get_draw(pd.RangeIndex(1), additional_key)
+        if self.index is None:
+            quantiles = self.randomness_stream.get_draw(pd.RangeIndex(1), self.additional_key)
         else:
-            quantiles = randomness_stream.get_draw(index, additional_key)
+            quantiles = self.randomness_stream.get_draw(self.index, self.additional_key)
 
-        values = self.distribution.ppf(quantiles, **self.params)
+        params = {
+            key: value.sample() if isinstance(value, FrozenDistribution) else value
+            for key, value in self.params.items()
+        }
+        values = self.distribution.ppf(quantiles, **params)
 
-        if index is None:
+        if self.index is None:
             values = values[0]
         else:
-            values = pd.Series(values, index=index, name=additional_key)
+            values = pd.Series(values, index=self.index, name=self.additional_key)
         return values
 
 
@@ -75,5 +80,11 @@ def from_configuration(
         for key in configuration
         if key != "distribution"
     }
-    distribution = FrozenDistribution(configuration.distribution, distribution_parameters)
-    return distribution.sample(randomness_stream, additional_key, index)
+    distribution = FrozenDistribution(
+        configuration.distribution,
+        distribution_parameters,
+        randomness_stream,
+        additional_key,
+        index,
+    )
+    return distribution.sample()

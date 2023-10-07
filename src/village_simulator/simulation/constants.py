@@ -1,1 +1,3 @@
-DAYS_PER_YEAR = 365.25
+import pandas as pd
+
+ONE_YEAR = pd.Timedelta(days=365.25)

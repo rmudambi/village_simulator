@@ -18,10 +18,10 @@ configuration:
             month: 1
             day: 1
         end:
-            year: 2001
+            year: 2003
             month: 1
             day: 1
-        step_size: 1  # Days
+        step_size: 2  # Days
     population:
         population_size: 40
 

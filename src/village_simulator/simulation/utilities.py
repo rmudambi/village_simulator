@@ -2,6 +2,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from vivarium import ConfigTree
 from vivarium.framework.randomness import RandomnessStream
 from vivarium.framework.time import Time
 
@@ -31,6 +32,10 @@ def round_stochastic(
         )
     else:
         return _round_series_stochastic(values, randomness_stream, additional_key)
+
+
+def get_annual_time_stamp(year: int, time_config: ConfigTree):
+    return pd.Timestamp(year, time_config["month"], time_config["day"])
 
 
 def get_next_annual_event_date(

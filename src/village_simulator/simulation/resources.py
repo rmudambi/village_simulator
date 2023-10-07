@@ -8,7 +8,7 @@ from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
 from village_simulator.simulation import sampling
-from village_simulator.simulation.constants import DAYS_PER_YEAR
+from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.map import FEATURE
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
@@ -271,7 +271,7 @@ class Food(Resource):
                 index,
             )
             harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
-            self.next_harvest_date += pd.Timedelta(days=DAYS_PER_YEAR)
+            self.next_harvest_date += ONE_YEAR
         else:
             harvest_quantity = pd.Series(
                 0.0, index=index, name=f"{self.resource}.accumulation"
