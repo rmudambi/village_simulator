@@ -11,6 +11,7 @@ components:
 
 configuration:
     randomness:
+        random_seed: 0
         key_columns: ["x", "y"]
     time:
         start:
@@ -21,7 +22,7 @@ configuration:
             year: 2003
             month: 1
             day: 1
-        step_size: 2  # Days
+        step_size: 1  # Days
     population:
         population_size: 40
 

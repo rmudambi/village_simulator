@@ -29,7 +29,7 @@ class Weather(Component):
                 "seasonality": {
                     "min": 0.1,
                     "max": 1.0,
-                    "min_date": {"month": 2, "day": 15},
+                    "min_date": {"month": 8, "day": 15},
                 },
                 "dry_probability": 0.55,
                 "gamma_shape_parameter": 0.9902,
