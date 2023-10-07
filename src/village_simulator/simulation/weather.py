@@ -46,7 +46,7 @@ class Weather(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return ["temperature", "daily_rainfall"]
+        return ["temperature", "rainfall"]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
@@ -75,7 +75,7 @@ class Weather(Component):
         temperature = self.get_temperature(event)
 
         rainfall = sampling.from_configuration(
-            self.configuration.rainfall, self.randomness, "daily_rainfall", event.index
+            self.configuration.rainfall, self.randomness, "rainfall", event.index
         )
 
         self.population_view.update(pd.concat([temperature, rainfall], axis=1))

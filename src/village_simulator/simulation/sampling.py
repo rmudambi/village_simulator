@@ -13,6 +13,7 @@ def _zero_inflated_gamma_ppf(
 ) -> pd.Series:
     values = pd.Series(0.0, index=quantiles.index)
     non_zero = quantiles > zero_probability
+    quantiles[non_zero] = (quantiles[non_zero] - zero_probability) / (1 - zero_probability)
     values[non_zero] = stats.gamma.ppf(quantiles[non_zero], a=shape, scale=scale)
     return values
 
