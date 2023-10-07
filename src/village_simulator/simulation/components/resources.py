@@ -8,8 +8,8 @@ from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
 from village_simulator.simulation import sampling
-from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.components.map import FEATURE
+from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
 

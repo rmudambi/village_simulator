@@ -9,38 +9,67 @@ time-step "global" parameters to define for the weather feature on each
 time-step. These values will be modified by a functional model of seasonality
 and then used to draw a "global" value for that weather feature on the
 time-step. Then there are addition parameters defining a distribution from which
-to sample the the specific values for each individual tile.
+to sample the the specific values for each individual tile. The process can be
+thought of like this:
+
+`value(time, tile) = value(global_value(time), tile)`
+
+Note: all numeric values specified in this document are configurable, and might
+be changed in the future causing the document to be out of sync with the true
+values. This document should be modified to reflect any methodological changes
+in the v1.0 model.
 
 **Seasons**
 
 Seasons are modeled as annually recurring sinusoidal functions. These functions
-provide values corresponding to the seasonal impact on weather generation
-parameters. The impact calculated for a given day of the year can then be
-applied additively or multiplicatively to the parameter in question.
+produce quantities that describe various seasonal impacts. These seasonal
+impacts then have concrete effects on the calculation of both temperature and
+rainfall. All seasonal effects operate on an annual cycle.
+
+*Temperature*
+
+The `seasonal_temperature_shift` is computed using a sinusoidal function with
+`amplitude = 15` and `minimum_date = January 15th`
+
+*Rainfall*
+
+An `aridity_factor` is computed using a sinusoidal function with `min = 0.1`,
+`max = 1.0`, and `minimum_date = August 15th`
 
 **Temperature**
 
-Temperature is modeled by using a normal distribution `d_1``to generate a global
-mean value. That mean value is then used by another normal distribution `d_2` to
-sample the temperature value for each tile of the map.
+Temperature is measured in degrees Fahrenheit.
 
-The standard deviations for the above defined distributions `d_1` and `d_2` are:
+It is modeled by producing the global mean temperature at a given time and then
+sampling specific values for each tile.
 
-- `d_1`: 5.0
-- `d_2`: 2.0
+`global_temperature(time)` samples from a normal distribution with
+`mean = 65.0 + seasonal_temperature_shift` and `standard deviation = 5.0`.
+`seasonal_temperature_shift` is described above in the Seasons section.
 
-The mean value used to calculate the global mean value is modified by
-seasonality. It can be computed using a sinusoidal function with the following
-properties:
-
-- Minimum temperature (in Fahrenheit): 50
-- Maximum temperature (in Fahrenheit): 80
-- Date of minimum temperature: January 15th
-- Period: 1 year
+`temperature(time, tile)` samples from a normal distribution with
+`mean = global_temperature(time)` and `standard deviation = 5.0`.
 
 **Rainfall**
 
-Implemented by not yet documented
+Rainfall is measured in mm per day.
+
+It is modeled by first determining whether it rains at all that day. If it
+rains, the simulation produces a global mean rainfall amount and then samples
+specific values for each tile. The process can be thought of like this:
+
+`no_rain(time)` samples from a dichotomous distribution with
+`probability_no_rain = 0.55 * aridity_factor`.
+
+`global_rainfall(time)` is 0.0 if `no_rain(time)`, otherwise it samples from a
+gamma distribution with `shape = 0.9902` and `scale = 15.0 * aridity_factor`.
+
+`rainfall(time, tile)` remains 0.0 if `no_rain(time)`, but samples from a normal
+distribution truncated at 0 (as it's not possible to have negative rainfall).
+This truncated normal distribution has `mean = global_rainfall(time)` and
+`standard deviation = 0.05 * global_rainfall(time)`.
+
+The `aridity_factor` is described above in the Seasons section.
 
 **Natural disasters**
 

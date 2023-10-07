@@ -17,9 +17,9 @@ class Weather(Component):
     CONFIGURATION_DEFAULTS = {
         "weather": {
             "temperature": {
+                "mean": 65.0,
                 "seasonality": {
-                    "min": 50,
-                    "max": 80,
+                    "amplitude": 15.0,
                     "min_date": {"month": 1, "day": 15},
                 },
                 "stochastic_variability": 5.0,
@@ -86,7 +86,12 @@ class Weather(Component):
     def temperature_source(self, event: Event) -> pd.Series:
         config = self.configuration.temperature
 
-        expected_temperature = get_value_from_annual_cycle(config.seasonality, event.time)
+        seasonal_temperature_shift = get_value_from_annual_cycle(
+            event.time,
+            amplitude=config.seasonality.amplitude,
+            min_date=config.seasonality.min_date,
+        )
+        expected_temperature = config.mean + seasonal_temperature_shift
         regional_temperature_dist = sampling.FrozenDistribution(
             sampling.NORMAL,
             {"loc": expected_temperature, "scale": config.stochastic_variability},
@@ -106,7 +111,12 @@ class Weather(Component):
     def rainfall_source(self, event: Event) -> pd.Series:
         config = self.configuration.rainfall
 
-        aridity_factor = get_value_from_annual_cycle(config.seasonality, event.time)
+        aridity_factor = get_value_from_annual_cycle(
+            event.time,
+            min=config.seasonality.min,
+            max=config.seasonality.max,
+            min_date=config.seasonality.min_date,
+        )
         dry_probability = 1 - aridity_factor * (1 - config.dry_probability)
         scale = aridity_factor * config.gamma_scale_parameter
 
