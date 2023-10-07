@@ -1,4 +1,6 @@
-**Game plan**
+=========
+Game plan
+=========
 
 Player plays as the leader of a village. Player enacts policies that affect the
 village. Could be loosely modeled on the world of the Sumerians, Vedic Aryans,
