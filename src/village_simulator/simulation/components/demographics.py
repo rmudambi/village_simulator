@@ -6,8 +6,8 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation import sampling
 from village_simulator.simulation.components.map import FEATURE
+from village_simulator.simulation.distributions import NORMAL, FrozenDistribution
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -21,14 +21,10 @@ class Demographics(Component):
 
     CONFIGURATION_DEFAULTS = {
         "demographics": {
-            "initial_village_size": {
-                "distribution": sampling.NORMAL,
-                "loc": 1_000,
-                "scale": 1.0,
-            },
-            "initial_sex_ratio": {"distribution": sampling.NORMAL, "loc": 1.0, "scale": 0.01},
-            "fertility_rate": {"distribution": sampling.NORMAL, "loc": 0.15, "scale": 0.01},
-            "mortality_rate": {"distribution": sampling.NORMAL, "loc": 0.1, "scale": 0.01},
+            "initial_village_size": {"loc": 1_000, "scale": 1.0},
+            "initial_sex_ratio": {"loc": 1.0, "scale": 0.01},
+            "fertility_rate": {"loc": 0.15, "scale": 0.01},
+            "mortality_rate": {"loc": 0.1, "scale": 0.01},
         }
     }
 
@@ -81,18 +77,12 @@ class Demographics(Component):
         female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
         male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
 
-        village_size = sampling.from_configuration(
-            self.configuration.initial_village_size,
-            self.randomness,
-            "initial_village_size",
-            village_index,
-        )
+        village_size = FrozenDistribution(
+            NORMAL, self.configuration.initial_village_size
+        ).sample(self.randomness, "initial_village_size", village_index)
 
-        sex_ratio = sampling.from_configuration(
-            self.configuration.initial_sex_ratio,
-            self.randomness,
-            "initial_sex_ratio",
-            village_index,
+        sex_ratio = FrozenDistribution(NORMAL, self.configuration.initial_sex_ratio).sample(
+            self.randomness, "initial_sex_ratio", village_index
         )
 
         female_village_size[village_index] = round_stochastic(
@@ -125,21 +115,29 @@ class Demographics(Component):
     ####################
 
     def get_fertility_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_fertility_rate = sampling.from_configuration(
-            self.configuration.fertility_rate, self.randomness, "female_fertility", index
-        ).rename(FEMALE_POPULATION_SIZE)
-        male_fertility_rate = sampling.from_configuration(
-            self.configuration.fertility_rate, self.randomness, "male_fertility", index
-        ).rename(MALE_POPULATION_SIZE)
+        female_fertility_rate = (
+            FrozenDistribution(NORMAL, self.configuration.fertility_rate)
+            .sample(self.randomness, "female_fertility", index)
+            .rename(FEMALE_POPULATION_SIZE)
+        )
+        male_fertility_rate = (
+            FrozenDistribution(NORMAL, self.configuration.fertility_rate)
+            .sample(self.randomness, "male_fertility", index)
+            .rename(MALE_POPULATION_SIZE)
+        )
         return pd.concat([female_fertility_rate, male_fertility_rate], axis=1)
 
     def get_mortality_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_mortality_rate = sampling.from_configuration(
-            self.configuration.mortality_rate, self.randomness, "female_mortality", index
-        ).rename(FEMALE_POPULATION_SIZE)
-        male_mortality_rate = sampling.from_configuration(
-            self.configuration.mortality_rate, self.randomness, "male_mortality", index
-        ).rename(MALE_POPULATION_SIZE)
+        female_mortality_rate = (
+            FrozenDistribution(NORMAL, self.configuration.mortality_rate)
+            .sample(self.randomness, "female_mortality", index)
+            .rename(FEMALE_POPULATION_SIZE)
+        )
+        male_mortality_rate = (
+            FrozenDistribution(NORMAL, self.configuration.mortality_rate)
+            .sample(self.randomness, "male_mortality", index)
+            .rename(MALE_POPULATION_SIZE)
+        )
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)
 
     def get_total_population(self, index: pd.Index) -> pd.Series:

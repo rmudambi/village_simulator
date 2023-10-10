@@ -7,9 +7,9 @@ from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
-from village_simulator.simulation import sampling
 from village_simulator.simulation.components.map import FEATURE
 from village_simulator.simulation.constants import ONE_YEAR
+from village_simulator.simulation.distributions import NORMAL, FrozenDistribution
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
 
@@ -20,21 +20,9 @@ class Resource(Component):
 
     CONFIGURATION_DEFAULTS = {
         "resource": {
-            "initial_per_capita_stores": {
-                "distribution": sampling.NORMAL,
-                "loc": 1.0,
-                "scale": 0.1,
-            },
-            "annual_per_capita_consumption": {
-                "distribution": sampling.NORMAL,
-                "loc": 1.0,
-                "scale": 0.1,
-            },
-            "annual_per_capita_accumulation": {
-                "distribution": sampling.NORMAL,
-                "loc": 1.0,
-                "scale": 0.1,
-            },
+            "initial_per_capita_stores": {"loc": 1.0, "scale": 0.1},
+            "annual_per_capita_consumption": {"loc": 1.0, "scale": 0.1},
+            "annual_per_capita_accumulation": {"loc": 1.0, "scale": 0.1},
         }
     }
 
@@ -117,12 +105,9 @@ class Resource(Component):
         village_index = feature[feature == "village"].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
-        stores[village_index] = self.initial_village_size * sampling.from_configuration(
-            self.configuration.initial_per_capita_stores,
-            self.randomness,
-            self.resource,
-            village_index,
-        )
+        stores[village_index] = self.initial_village_size * FrozenDistribution(
+            NORMAL, self.configuration.initial_per_capita_stores
+        ).sample(self.randomness, self.resource, village_index)
         self.population_view.update(stores)
 
     def on_time_step(self, event: Event) -> None:
@@ -151,12 +136,9 @@ class Resource(Component):
         :param index:
         :return:
         """
-        consumption_per_capita = sampling.from_configuration(
-            self.configuration.annual_per_capita_consumption,
-            self.randomness,
-            f"{self.resource}.consumption",
-            index,
-        )
+        consumption_per_capita = FrozenDistribution(
+            NORMAL, self.configuration.annual_per_capita_consumption
+        ).sample(self.randomness, f"{self.resource}.consumption", index)
         return self.get_total_from_per_capita(consumption_per_capita)
 
     def get_accumulation_rate(self, index: pd.Index) -> pd.Series:
@@ -169,12 +151,9 @@ class Resource(Component):
         :param index:
         :return:
         """
-        accumulation_per_capita = sampling.from_configuration(
-            self.configuration.annual_per_capita_accumulation,
-            self.randomness,
-            f"{self.resource}.accumulation",
-            index,
-        )
+        accumulation_per_capita = FrozenDistribution(
+            NORMAL, self.configuration.annual_per_capita_accumulation
+        ).sample(self.randomness, f"{self.resource}.accumulation", index)
         return self.get_total_from_per_capita(accumulation_per_capita)
 
     ##################
@@ -193,21 +172,9 @@ class Food(Resource):
 
     CONFIGURATION_DEFAULTS = {
         "food": {
-            "initial_per_capita_stores": {
-                "distribution": sampling.NORMAL,
-                "loc": 10.0,
-                "scale": 0.5,
-            },
-            "annual_per_capita_consumption": {
-                "distribution": sampling.NORMAL,
-                "loc": 10.0,
-                "scale": 0.5,
-            },
-            "annual_per_capita_accumulation": {
-                "distribution": sampling.NORMAL,
-                "loc": 10.0,
-                "scale": 0.5,
-            },
+            "initial_per_capita_stores": {"loc": 10.0, "scale": 0.5},
+            "annual_per_capita_consumption": {"loc": 10.0, "scale": 0.5},
+            "annual_per_capita_accumulation": {"loc": 10.0, "scale": 0.5},
             "harvest_date": {"month": 9, "day": 15},
         }
     }
@@ -264,12 +231,9 @@ class Food(Resource):
         """
         clock_time = self.clock()
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
-            harvest_per_capita = sampling.from_configuration(
-                self.configuration.annual_per_capita_accumulation,
-                self.randomness,
-                f"{self.resource}.accumulation",
-                index,
-            )
+            harvest_per_capita = FrozenDistribution(
+                NORMAL, self.configuration.annual_per_capita_accumulation
+            ).sample(self.randomness, f"{self.resource}.accumulation", index)
             harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
             self.next_harvest_date += ONE_YEAR
         else:

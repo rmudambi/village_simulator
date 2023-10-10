@@ -7,7 +7,12 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation import sampling
+from village_simulator.simulation.distributions import (
+    NORMAL,
+    STRETCHED_TRUNCNORM,
+    ZERO_INFLATED_GAMMA,
+    FrozenDistribution,
+)
 from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
 
@@ -92,21 +97,14 @@ class Weather(Component):
             min_date=config.seasonality.min_date,
         )
         expected_temperature = config.mean + seasonal_temperature_shift
-        regional_temperature_dist = sampling.FrozenDistribution(
-            sampling.NORMAL,
-            {"loc": expected_temperature, "scale": config.stochastic_variability},
-            self.randomness,
-            "regional_temperature",
+        regional_temperature_dist = FrozenDistribution(
+            NORMAL, {"loc": expected_temperature, "scale": config.stochastic_variability}
         )
 
-        composite_distribution = sampling.FrozenDistribution(
-            sampling.NORMAL,
-            {"loc": regional_temperature_dist, "scale": config.local_variability},
-            self.randomness,
-            "temperature",
-            event.index,
+        composite_distribution = FrozenDistribution(
+            NORMAL, {"loc": regional_temperature_dist, "scale": config.local_variability}
         )
-        return composite_distribution.sample()
+        return composite_distribution.sample(self.randomness, "temperature", event.index)
 
     def rainfall_source(self, event: Event) -> pd.Series:
         config = self.configuration.rainfall
@@ -120,22 +118,17 @@ class Weather(Component):
         dry_probability = 1 - aridity_factor * (1 - config.dry_probability)
         scale = aridity_factor * config.gamma_scale_parameter
 
-        regional_rainfall_dist = sampling.FrozenDistribution(
-            sampling.ZERO_INFLATED_GAMMA,
+        regional_rainfall_dist = FrozenDistribution(
+            ZERO_INFLATED_GAMMA,
             {
                 "zero_probability": dry_probability,
                 "shape": config.gamma_shape_parameter,
                 "scale": scale,
             },
-            self.randomness,
-            "regional_rainfall",
         )
 
-        composite_distribution = sampling.FrozenDistribution(
-            sampling.STRETCHED_TRUNCNORM,
+        composite_distribution = FrozenDistribution(
+            STRETCHED_TRUNCNORM,
             {"loc": regional_rainfall_dist, "scale": config.local_variability},
-            self.randomness,
-            "rainfall",
-            event.index,
         )
-        return composite_distribution.sample()
+        return composite_distribution.sample(self.randomness, "rainfall", event.index)

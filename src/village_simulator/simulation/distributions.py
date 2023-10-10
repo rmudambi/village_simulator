@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -41,51 +41,34 @@ ZERO_INFLATED_GAMMA = Distribution("zero_inflated_gamma", _zero_inflated_gamma_p
 @dataclasses.dataclass
 class FrozenDistribution:
     distribution: Distribution
-    params: Dict[str, Union[float, "FrozenDistribution"]]
-    randomness_stream: RandomnessStream
-    additional_key: str
-    index: pd.Index = None
+    params: Union[ConfigTree, Dict[str, Union[float, "FrozenDistribution"]]]
 
-    def sample(self) -> Union[float, pd.Series]:
+    def __post_init__(self):
+        if isinstance(self.params, ConfigTree):
+            self.params = self.params.to_dict()
+
+    def sample(
+        self,
+        randomness_stream: RandomnessStream,
+        additional_key: str,
+        index: Optional[pd.Index],
+    ) -> Union[float, pd.Series]:
         # fixme: this would be much simpler if RandomnessStream could return a scalar
-        if self.index is None:
-            quantiles = self.randomness_stream.get_draw(pd.RangeIndex(1), self.additional_key)
+        if index is None:
+            quantiles = randomness_stream.get_draw(pd.RangeIndex(1), additional_key)
         else:
-            quantiles = self.randomness_stream.get_draw(self.index, self.additional_key)
+            quantiles = randomness_stream.get_draw(index, additional_key)
 
         params = {
-            key: value.sample() if isinstance(value, FrozenDistribution) else value
+            key: value.sample(randomness_stream, f"{additional_key}_{key}", None)
+            if isinstance(value, FrozenDistribution)
+            else value
             for key, value in self.params.items()
         }
         values = self.distribution.ppf(quantiles, **params)
 
-        if self.index is None:
+        if index is None:
             values = values[0]
         else:
-            values = pd.Series(values, index=self.index, name=self.additional_key)
+            values = pd.Series(values, index=index, name=additional_key)
         return values
-
-
-def from_configuration(
-    configuration: ConfigTree,
-    randomness_stream: RandomnessStream,
-    additional_key: str,
-    index: pd.Index = None,
-) -> Union[float, pd.Series]:
-    distribution_parameters = {
-        key: from_configuration(
-            configuration[key], randomness_stream, f"{additional_key}_{key}"
-        )
-        if isinstance(configuration[key], ConfigTree)
-        else configuration[key]
-        for key in configuration
-        if key != "distribution"
-    }
-    distribution = FrozenDistribution(
-        configuration.distribution,
-        distribution_parameters,
-        randomness_stream,
-        additional_key,
-        index,
-    )
-    return distribution.sample()
