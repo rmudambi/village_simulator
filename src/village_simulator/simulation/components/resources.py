@@ -7,6 +7,7 @@ from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
+from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
 from village_simulator.simulation.components.map import FEATURE
 from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.distributions import NORMAL, FrozenDistribution
@@ -39,7 +40,7 @@ class Resource(Component):
         return [self.resource_stores]
 
     @property
-    def columns_required(self) -> List[str]:
+    def columns_required(self) -> Optional[List[str]]:
         return [FEATURE]
 
     @property
@@ -165,17 +166,18 @@ class Resource(Component):
         return self.total_population(per_capita_value.index) * per_capita_value
 
 
-class Food(Resource):
+class Wheat(Resource):
     """
     Component that manages the food resources of villages in the game.
     """
 
     CONFIGURATION_DEFAULTS = {
-        "food": {
+        "resource": {
             "initial_per_capita_stores": {"loc": 10.0, "scale": 0.5},
             "annual_per_capita_consumption": {"loc": 10.0, "scale": 0.5},
             "annual_per_capita_accumulation": {"loc": 10.0, "scale": 0.5},
-            "harvest_date": {"month": 9, "day": 15},
+            "sowing_date": {"month": 10, "day": 15},
+            "harvest_date": {"month": 5, "day": 15},
         }
     }
 
@@ -184,15 +186,20 @@ class Food(Resource):
     ##############
 
     @property
-    def configuration_defaults(self) -> Dict[str, Any]:
-        return self.CONFIGURATION_DEFAULTS
+    def columns_created(self) -> List[str]:
+        return super().columns_created + [self.projected_yield_column]
+
+    @property
+    def columns_required(self) -> Optional[List[str]]:
+        return super().columns_required + ["temperature"]
 
     #####################
     # Lifecycle methods #
     #####################
 
     def __init__(self):
-        super().__init__("food")
+        super().__init__("wheat")
+        self.projected_yield_column = f"projected_{self.resource}_yield"
 
     def setup(self, builder: Builder) -> None:
         super().setup(builder)
@@ -203,6 +210,68 @@ class Food(Resource):
             self.configuration.harvest_date.month,
             self.configuration.harvest_date.day,
         )
+
+        self.effect_of_temperature_on_yield = builder.lookup.build_table(
+            pd.read_csv(EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD),
+            parameter_columns=["temperature"],
+        )
+
+        self.get_total_population = builder.value.get_value("total_population")
+
+    def on_initialize_simulants(self, pop_data: SimulantData) -> None:
+        super().on_initialize_simulants(pop_data)
+
+        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
+        village_index = feature[feature == "village"].index
+        expected_wheat_yield = pd.Series(
+            0.0, index=pop_data.index, name=self.projected_yield_column
+        )
+        expected_wheat_yield[village_index] = (
+            self.initial_village_size * self.configuration.annual_per_capita_accumulation.loc
+        )
+        self.population_view.update(expected_wheat_yield)
+
+    def on_time_step(self, event: Event) -> None:
+        """
+        Modify the expected wheat yield based on the current temperature
+        """
+        super().on_time_step(event)
+
+        clock_time = self.clock()
+        next_harvest_date = get_next_annual_event_date(
+            clock_time,
+            self.configuration.harvest_date.month,
+            self.configuration.harvest_date.day,
+        )
+        next_sowing_date = get_next_annual_event_date(
+            clock_time,
+            self.configuration.sowing_date.month,
+            self.configuration.sowing_date.day,
+        )
+
+        # if next harvest date is less than the next sowing date, update projected yield
+        if next_harvest_date < next_sowing_date:
+            expected_yield = self.population_view.get(event.index)[
+                self.projected_yield_column
+            ]
+            effect_of_temperature = self.effect_of_temperature_on_yield(expected_yield.index)
+            expected_yield *= effect_of_temperature
+            self.population_view.update(expected_yield)
+
+    def on_time_step_cleanup(self, event: Event) -> None:
+        """
+        Reset the expected yield after harvest has been done
+        """
+        clock_time = self.clock()
+        if clock_time < self.next_harvest_date <= clock_time + self.step_size():
+            expected_yield = self.population_view.get(event.index)[
+                self.projected_yield_column
+            ]
+            expected_yield = (
+                self.total_population(expected_yield.index)
+                * self.configuration.annual_per_capita_accumulation.loc
+            ).rename(self.projected_yield_column)
+            self.population_view.update(expected_yield)
 
     #################
     # Setup methods #
@@ -231,10 +300,7 @@ class Food(Resource):
         """
         clock_time = self.clock()
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
-            harvest_per_capita = FrozenDistribution(
-                NORMAL, self.configuration.annual_per_capita_accumulation
-            ).sample(self.randomness, f"{self.resource}.accumulation", index)
-            harvest_quantity = self.get_total_from_per_capita(harvest_per_capita)
+            harvest_quantity = self.population_view.get(index)[self.projected_yield_column]
             self.next_harvest_date += ONE_YEAR
         else:
             harvest_quantity = pd.Series(

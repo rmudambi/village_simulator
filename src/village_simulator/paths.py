@@ -3,4 +3,9 @@ from pathlib import Path
 import village_simulator
 
 BASE_DIR = Path(village_simulator.__file__).resolve().parent
-GAME_SPECIFICATION = BASE_DIR / "simulation" / "specification.yaml"
+SIMULATION_DIR = BASE_DIR / "simulation"
+
+GAME_SPECIFICATION = SIMULATION_DIR / "specification.yaml"
+
+DATA_DIR = SIMULATION_DIR / "data"
+EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD = DATA_DIR / "effect_of_temperature_on_wheat_yields.csv"

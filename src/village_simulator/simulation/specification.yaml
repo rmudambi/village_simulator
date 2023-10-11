@@ -4,7 +4,7 @@ components:
             - Map()
             - Weather()
             - Demographics()
-            - Food()
+            - Wheat()
             - Resource("wood")
             - Resource("stone")
             - Resource("bronze")
