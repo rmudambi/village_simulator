@@ -16,11 +16,11 @@ configuration:
     time:
         start:
             year: 2000
-            month: 1
+            month: 6
             day: 1
         end:
             year: 2003
-            month: 1
+            month: 6
             day: 1
         step_size: 1  # Days
     population:
