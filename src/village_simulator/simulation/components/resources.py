@@ -260,6 +260,7 @@ class Wheat(Resource):
         Modify the expected wheat yield based on the current temperature.
         Track rainfall metrics.
         """
+        # todo need to model effects of rainfall metrics on yield
         # if next harvest date is less than the next sowing date, update projected yield
         if self.next_harvest_date < self.next_sowing_date:
             data = self.population_view.get(event.index)
