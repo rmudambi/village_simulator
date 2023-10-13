@@ -1,13 +1,13 @@
 from typing import Dict, List, Optional
 
 import pandas as pd
+from scipy import stats
 from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
 from village_simulator.simulation.components.map import FEATURE
-from village_simulator.simulation.distributions import NORMAL, FrozenDistribution
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -77,12 +77,18 @@ class Demographics(Component):
         female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
         male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
 
-        village_size = FrozenDistribution(
-            NORMAL, self.configuration.initial_village_size
-        ).sample(self.randomness, "initial_village_size", village_index)
+        village_size = self.randomness.sample_from_distribution(
+            village_index,
+            distribution=stats.norm,
+            additional_key="initial_village_size",
+            **self.configuration.initial_village_size.to_dict(),
+        )
 
-        sex_ratio = FrozenDistribution(NORMAL, self.configuration.initial_sex_ratio).sample(
-            self.randomness, "initial_sex_ratio", village_index
+        sex_ratio = self.randomness.sample_from_distribution(
+            village_index,
+            distribution=stats.norm,
+            additional_key="initial_sex_ratio",
+            **self.configuration.initial_sex_ratio.to_dict(),
         )
 
         female_village_size[village_index] = round_stochastic(
@@ -118,29 +124,34 @@ class Demographics(Component):
     ####################
 
     def get_fertility_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_fertility_rate = (
-            FrozenDistribution(NORMAL, self.configuration.fertility_rate)
-            .sample(self.randomness, "female_fertility", index)
-            .rename(FEMALE_POPULATION_SIZE)
-        )
-        male_fertility_rate = (
-            FrozenDistribution(NORMAL, self.configuration.fertility_rate)
-            .sample(self.randomness, "male_fertility", index)
-            .rename(MALE_POPULATION_SIZE)
-        )
+        female_fertility_rate = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key="female_fertility",
+            **self.configuration.fertility_rate.to_dict(),
+        ).rename(FEMALE_POPULATION_SIZE)
+
+        male_fertility_rate = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key="male_fertility",
+            **self.configuration.fertility_rate.to_dict(),
+        ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_fertility_rate, male_fertility_rate], axis=1)
 
     def get_mortality_rate(self, index: pd.Index) -> pd.DataFrame:
-        female_mortality_rate = (
-            FrozenDistribution(NORMAL, self.configuration.mortality_rate)
-            .sample(self.randomness, "female_mortality", index)
-            .rename(FEMALE_POPULATION_SIZE)
-        )
-        male_mortality_rate = (
-            FrozenDistribution(NORMAL, self.configuration.mortality_rate)
-            .sample(self.randomness, "male_mortality", index)
-            .rename(MALE_POPULATION_SIZE)
-        )
+        female_mortality_rate = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key="female_mortality",
+            **self.configuration.mortality_rate.to_dict(),
+        ).rename(FEMALE_POPULATION_SIZE)
+        male_mortality_rate = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key="male_mortality",
+            **self.configuration.mortality_rate.to_dict(),
+        ).rename(MALE_POPULATION_SIZE)
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)
 
     def get_total_population(self, index: pd.Index) -> pd.Series:

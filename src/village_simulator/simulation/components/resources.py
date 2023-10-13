@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from scipy import stats
 from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
@@ -10,7 +11,6 @@ from vivarium.framework.time import get_time_stamp
 from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
 from village_simulator.simulation.components.map import FEATURE
 from village_simulator.simulation.constants import ONE_YEAR
-from village_simulator.simulation.distributions import NORMAL, FrozenDistribution
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
 
@@ -106,9 +106,13 @@ class Resource(Component):
         village_index = feature[feature == "village"].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
-        stores[village_index] = self.initial_village_size * FrozenDistribution(
-            NORMAL, self.configuration.initial_per_capita_stores
-        ).sample(self.randomness, self.resource, village_index)
+        stores[village_index] = self.randomness.sample_from_distribution(
+            village_index,
+            distribution=stats.norm,
+            additional_key=self.resource,
+            **self.configuration.initial_per_capita_stores.to_dict(),
+        ) * self.initial_village_size
+
         self.population_view.update(stores)
 
     def on_time_step(self, event: Event) -> None:
@@ -137,9 +141,12 @@ class Resource(Component):
         :param index:
         :return:
         """
-        consumption_per_capita = FrozenDistribution(
-            NORMAL, self.configuration.annual_per_capita_consumption
-        ).sample(self.randomness, f"{self.resource}.consumption", index)
+        consumption_per_capita = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key=f"{self.resource}.consumption",
+            **self.configuration.annual_per_capita_consumption.to_dict(),
+        )
         return self.get_total_from_per_capita(consumption_per_capita)
 
     def get_accumulation_rate(self, index: pd.Index) -> pd.Series:
@@ -152,9 +159,12 @@ class Resource(Component):
         :param index:
         :return:
         """
-        accumulation_per_capita = FrozenDistribution(
-            NORMAL, self.configuration.annual_per_capita_accumulation
-        ).sample(self.randomness, f"{self.resource}.accumulation", index)
+        accumulation_per_capita = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key=f"{self.resource}.accumulation",
+            **self.configuration.annual_per_capita_accumulation.to_dict(),
+        )
         return self.get_total_from_per_capita(accumulation_per_capita)
 
     ##################
