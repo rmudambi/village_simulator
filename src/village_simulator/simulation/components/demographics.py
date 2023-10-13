@@ -104,8 +104,11 @@ class Demographics(Component):
         ]
 
         fertility_rate = self.fertility_rate(villages.index)
+        births = fertility_rate.mul(villages[FEMALE_POPULATION_SIZE], axis=0)
+
         mortality_rate = self.mortality_rate(villages.index)
-        villages *= 1.0 + fertility_rate - mortality_rate
+        deaths = mortality_rate * villages
+        villages += births - deaths
 
         villages = round_stochastic(villages, self.randomness, "population_size")
         self.population_view.update(villages)
