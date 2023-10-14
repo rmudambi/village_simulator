@@ -76,7 +76,10 @@ def test_ppf_all_series_returns_dataframe(ppf, kwargs):
 )
 def test_ppf_mismatched_distribution_parameters(ppf, kwargs):
     # test that the function raises an error when kwargs have different indices
-    with pytest.raises(ValueError, match="All distribution parameters must have the same index or be scalars."):
+    with pytest.raises(
+        ValueError,
+        match="All distribution parameters must have the same index or be scalars.",
+    ):
         ppf(pd.Series([0.5, 0.99, 0.63, 0.01]), **kwargs)
 
 

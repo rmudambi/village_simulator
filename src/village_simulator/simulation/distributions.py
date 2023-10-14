@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union, Tuple
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -49,22 +49,26 @@ def stretched_truncnorm_ppf(
     The inverse of the cumulative distribution function of a stretched
     truncated normal distribution.
     """
-    quantiles, loc, scale = _format_distribution_parameters(quantiles, loc=loc, scale=scale)
+    quantiles, loc, scale = _format_distribution_parameters(quantiles, loc, scale)
 
-    non_zero_loc = loc[loc > 0.0].values[:, np.newaxis]
-    non_zero_scale = scale[loc > 0.0].values[:, np.newaxis] * non_zero_loc
+    is_non_zero = loc > 0.0
+    non_zero_loc, non_zero_scale = _transpose_distribution_parameters(
+        loc[is_non_zero], scale[is_non_zero]
+    )
+
+    non_zero_scale = non_zero_scale * non_zero_loc
     a = -non_zero_loc / non_zero_scale
     a = np.where(a < -5, -5, a)
 
     values = stats.truncnorm.ppf(quantiles, a=a, b=5, loc=non_zero_loc, scale=non_zero_scale)
 
     samples = pd.DataFrame(0.0, index=quantiles.index, columns=loc.index)
-    samples.loc[:, loc[loc > 0.0].index] = values.T
+    samples.loc[:, loc[is_non_zero].index] = values.T
     return samples.squeeze()
 
 
 def _format_distribution_parameters(
-    quantiles: Union[float, pd.Series], **distribution_parameters: Union[float, pd.Series]
+    quantiles: Union[float, pd.Series], *distribution_parameters: Union[float, pd.Series]
 ) -> Tuple[pd.Series, ...]:
     """
     Converts quantiles and all distribution parameters to Series.
@@ -86,7 +90,7 @@ def _format_distribution_parameters(
     """
     quantiles = pd.Series(quantiles) if not isinstance(quantiles, pd.Series) else quantiles
 
-    parameter_series = [v.index for v in distribution_parameters.values() if isinstance(v, pd.Series)]
+    parameter_series = [v.index for v in distribution_parameters if isinstance(v, pd.Series)]
     if parameter_series:
         series_index = parameter_series[0]
         if not all([v.equals(parameter_series[0]) for v in parameter_series]):
@@ -96,11 +100,33 @@ def _format_distribution_parameters(
     else:
         series_index = pd.Index([0])
 
-    distribution_parameters = {
-        parameter_name: pd.Series(parameter_value, index=series_index)
+    distribution_parameters = (
+        pd.Series(parameter_value, index=series_index)
         if not isinstance(parameter_value, pd.Series)
         else parameter_value
-        for parameter_name, parameter_value in distribution_parameters.items()
-    }
+        for parameter_value in distribution_parameters
+    )
 
-    return quantiles, *distribution_parameters.values()
+    return quantiles, *distribution_parameters
+
+
+def _transpose_distribution_parameters(
+    *distribution_parameters: pd.Series,
+) -> Tuple[np.ndarray, ...]:
+    """
+    Transposes all distribution parameters to have the same shape.
+
+    Throws a ValueError if any distribution_parameters are Series with
+    mismatched indices.
+
+    Parameters
+    ----------
+    distribution_parameters
+        The parameters of the distribution.
+
+    Returns
+    -------
+    All parameters as numpy arrays in the same order they were input.
+    """
+    distribution_parameters = tuple(v.values[:, np.newaxis] for v in distribution_parameters)
+    return distribution_parameters
