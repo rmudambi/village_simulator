@@ -106,12 +106,15 @@ class Resource(Component):
         village_index = feature[feature == "village"].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
-        stores[village_index] = self.randomness.sample_from_distribution(
-            village_index,
-            distribution=stats.norm,
-            additional_key=self.resource,
-            **self.configuration.initial_per_capita_stores.to_dict(),
-        ) * self.initial_village_size
+        stores[village_index] = (
+            self.randomness.sample_from_distribution(
+                village_index,
+                distribution=stats.norm,
+                additional_key=self.resource,
+                **self.configuration.initial_per_capita_stores.to_dict(),
+            )
+            * self.initial_village_size
+        )
 
         self.population_view.update(stores)
 

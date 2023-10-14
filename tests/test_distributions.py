@@ -2,9 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from village_simulator.simulation.distributions import (
+from village_simulator.simulation.distributions import (  # zero_inflated_gamma_ppf,
     stretched_truncnorm_ppf,
-    # zero_inflated_gamma_ppf,
 )
 
 
@@ -27,7 +26,6 @@ def test_ppf_all_scalar_return_float(ppf, kwargs):
         # (zero_inflated_gamma_ppf, {"zero_probability": 0.6, "shape": 1.0, "scale": 1.0}),
     ],
 )
-@pytest.mark.xfail
 def test_ppf_quantiles_scalar_kwargs_series_or_scalar_returns_series(ppf, kwargs):
     # test that the function returns a Series when quantiles is a scalar and the
     # distribution kwargs are a mix of Series and scalars with at least one
@@ -43,7 +41,6 @@ def test_ppf_quantiles_scalar_kwargs_series_or_scalar_returns_series(ppf, kwargs
         # (zero_inflated_gamma_ppf, {"zero_probability": 0.6, "shape": 1.0, "scale": 1.0}),
     ],
 )
-@pytest.mark.xfail
 def test_ppf_quantiles_series_kwargs_series_or_scalar_returns_dataframe(ppf, kwargs):
     # test that the function returns a DataFrame when quantiles is a Series and
     # the distribution kwargs are a mix of Series and scalars with at least one
@@ -77,9 +74,9 @@ def test_ppf_all_series_returns_dataframe(ppf, kwargs):
         # (zero_inflated_gamma_ppf, {"zero_probability": 0.6, "shape": 1.0, "scale": 1.0}),
     ],
 )
-def test_ppf_loc_scale_mismatched(ppf, kwargs):
+def test_ppf_mismatched_distribution_parameters(ppf, kwargs):
     # test that the function raises an error when kwargs have different indices
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="All distribution parameters must have the same index or be scalars."):
         ppf(pd.Series([0.5, 0.99, 0.63, 0.01]), **kwargs)
 
 

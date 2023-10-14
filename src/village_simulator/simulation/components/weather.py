@@ -9,7 +9,8 @@ from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
 from village_simulator.simulation.distributions import (
-    stretched_truncnorm_ppf, zero_inflated_gamma_ppf,
+    stretched_truncnorm_ppf,
+    zero_inflated_gamma_ppf,
 )
 from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
@@ -99,7 +100,7 @@ class Weather(Component):
             pd.Index([0]),
             distribution=stats.norm,
             additional_key="regional_temperature",
-            loc= expected_temperature,
+            loc=expected_temperature,
             scale=config.stochastic_variability,
         )[0]
 
