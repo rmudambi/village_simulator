@@ -14,6 +14,15 @@ from village_simulator.simulation.distributions import (
 )
 from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
+RAINFALL_SEASONALITY_MIN = 0.1
+RAINFALL_SEASONALITY_MAX = 1.0
+RAINFALL_SEASONALITY_MIN_DATE = {"month": 8, "day": 15}
+
+DRY_PROBABILITY = 0.55
+GAMMA_SHAPE_PARAMETER = 0.9902
+GAMMA_SCALE_PARAMETER = 15.0
+RAINFALL_LOCAL_VARIABILITY = 0.05
+
 
 class Weather(Component):
     """Component that manages the weather"""
@@ -31,14 +40,14 @@ class Weather(Component):
             },
             "rainfall": {
                 "seasonality": {
-                    "min": 0.1,
-                    "max": 1.0,
-                    "min_date": {"month": 8, "day": 15},
+                    "min": RAINFALL_SEASONALITY_MIN,
+                    "max": RAINFALL_SEASONALITY_MAX,
+                    "min_date": RAINFALL_SEASONALITY_MIN_DATE,
                 },
-                "dry_probability": 0.55,
-                "gamma_shape_parameter": 0.9902,
-                "gamma_scale_parameter": 15.0,
-                "local_variability": 0.05,
+                "dry_probability": DRY_PROBABILITY,
+                "gamma_shape_parameter": GAMMA_SHAPE_PARAMETER,
+                "gamma_scale_parameter": GAMMA_SCALE_PARAMETER,
+                "local_variability": RAINFALL_LOCAL_VARIABILITY,
             },
         }
     }
