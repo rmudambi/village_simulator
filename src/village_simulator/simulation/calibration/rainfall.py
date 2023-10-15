@@ -69,7 +69,6 @@ def sample_rainfall_in_period(
         columns=pd.Index(range(num_tiles), name="tile"),
     ).stack()
 
-    # expected_rainfall = np.tile(regional_rainfall.values, tiles)[:, None]
     # use stretched truncnorm to get local values for large number of locations
     local_rainfall = stretched_truncnorm_ppf(
         pd.Series(np.random.rand(len(expected_rainfall)), index=expected_rainfall.index),
@@ -77,7 +76,4 @@ def sample_rainfall_in_period(
         scale=RAINFALL_LOCAL_VARIABILITY,
     )
 
-    # get mean mid-growth rainfall
-    # mean_all_years_rainfall = (local_rainfall / tiles).sum()
-    # mean_rainfall = mean_all_years_rainfall / years
     return local_rainfall
