@@ -39,31 +39,29 @@ def sample_mid_growth_rainfall(years: int, tiles: int) -> float:
         )
         for date in date_range
     ]
-    aridity_factors = pd.Series(aridity_factors, index=date_range)
+    aridity_factors = np.tile(aridity_factors, years)[:, None]
 
     # get zero_inflated_gamma_ppf parameters for each day in period
     dry_probabilities = 1 - aridity_factors * (1 - DRY_PROBABILITY)
     scale = aridity_factors * GAMMA_SCALE_PARAMETER
 
     # sample large number of observations for each day in period
-    regional_rainfall_2d = zero_inflated_gamma_ppf(
-        pd.Series(np.random.rand(years)),
+    regional_rainfall = zero_inflated_gamma_ppf(
+        pd.Series(np.random.rand(len(aridity_factors))),
         p_zero=dry_probabilities,
         shape=GAMMA_SHAPE_PARAMETER,
         scale=scale,
     )
 
-    # convert 2d regional_rainfall to 1d
-    regional_rainfall_1d = regional_rainfall_2d.stack()
-
+    expected_rainfall = np.tile(regional_rainfall.values, tiles)[:, None]
     # use stretched truncnorm to get local values for large number of locations
     local_rainfall = stretched_truncnorm_ppf(
-        pd.Series(np.random.rand(tiles)),
-        loc=regional_rainfall_1d,
+        pd.Series(np.random.rand(len(expected_rainfall))),
+        loc=expected_rainfall,
         scale=RAINFALL_LOCAL_VARIABILITY,
     )
 
     # get mean mid-growth rainfall
-    mean_all_years_rainfall = local_rainfall.sum(axis=1) / tiles
-    mean_rainfall = mean_all_years_rainfall.sum() / years
+    mean_all_years_rainfall = (local_rainfall / tiles).sum()
+    mean_rainfall = mean_all_years_rainfall / years
     return mean_rainfall

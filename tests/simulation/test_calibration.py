@@ -2,4 +2,4 @@ from village_simulator.simulation.calibration.rainfall import sample_mid_growth_
 
 
 def test_sample_mid_growth_rainfall():
-    sample_mid_growth_rainfall(10, 15)
+    sample_mid_growth_rainfall(years=100, tiles=40)
