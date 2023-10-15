@@ -9,7 +9,7 @@ def zero_inflated_gamma_ppf(
     quantiles: Union[float, pd.Series],
     p_zero: Union[float, np.ndarray] = 0.0,
     shape: Union[float, np.ndarray] = 1.0,
-    scale: Union[float, np.ndarray] = 1.0
+    scale: Union[float, np.ndarray] = 1.0,
 ) -> Union[float, pd.Series, pd.DataFrame]:
     """
     Return the inverse of the cumulative distribution function of a zero-inflated
@@ -100,7 +100,9 @@ def stretched_truncnorm_ppf(
     modified_scale = scale * modified_loc
     a = -modified_loc / modified_scale
 
-    values = stats.truncnorm.ppf(quantiles_values, a=a, b=5, loc=modified_loc, scale=modified_scale)
+    values = stats.truncnorm.ppf(
+        quantiles_values, a=a, b=5, loc=modified_loc, scale=modified_scale
+    )
 
     # Set values to 0.0 where loc is 0.0
     values = np.where(np.broadcast_to(is_non_zero, values.shape), values, 0.0)

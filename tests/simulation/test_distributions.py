@@ -5,9 +5,9 @@ import pandas as pd
 import pytest
 
 from village_simulator.simulation.distributions import (
+    _format_distribution_parameters,
     stretched_truncnorm_ppf,
     zero_inflated_gamma_ppf,
-    _format_distribution_parameters,
 )
 
 
@@ -82,7 +82,7 @@ def test_ppf_quantiles_series_returns_same_dimension_series(ppf, kwargs):
         (
             zero_inflated_gamma_ppf,
             {"p_zero": np.array([[0.3, 0.1, 0.9]]), "scale": np.array([[1.0, 3.0, 2.0]])},
-        )
+        ),
     ],
 )
 def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
@@ -97,7 +97,9 @@ def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
     assert actual.shape == (2, 3)
 
 
-@pytest.mark.parametrize("ppf, num_args", [(stretched_truncnorm_ppf, 2), (zero_inflated_gamma_ppf, 3)])
+@pytest.mark.parametrize(
+    "ppf, num_args", [(stretched_truncnorm_ppf, 2), (zero_inflated_gamma_ppf, 3)]
+)
 def test_ppf_calls_format_distribution_parameters(mocker, ppf, num_args):
     """Test that the function calls _format_distribution_parameters"""
     mock = mocker.patch(
@@ -119,7 +121,7 @@ def test_ppf_calls_format_distribution_parameters(mocker, ppf, num_args):
 )
 def test_format_distribution_parameters(args, message):
     """Test that the function raises an error when kwargs have different indices"""
-    with pytest.raises(ValueError, match=message,):
+    with pytest.raises(ValueError, match=message):
         _format_distribution_parameters(pd.Series([0.5, 0.99, 0.63, 0.01]), *args)
 
 
