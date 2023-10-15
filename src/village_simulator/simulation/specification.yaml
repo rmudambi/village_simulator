@@ -5,6 +5,7 @@ components:
             - Weather()
             - Demographics()
             - Wheat()
+            - TemperatureEffect("wheat")
             - Resource("wood")
             - Resource("stone")
             - Resource("bronze")

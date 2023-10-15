@@ -1,8 +1,10 @@
 from typing import List, Optional
 
 import pandas as pd
+from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
+from vivarium.framework.lookup import LookupTableData
 from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
@@ -48,7 +50,7 @@ class Wheat(Resource):
 
     @property
     def columns_required(self) -> Optional[List[str]]:
-        return super().columns_required + ["temperature", "rainfall"]
+        return super().columns_required + ["rainfall"]
 
     #####################
     # Lifecycle methods #
@@ -56,7 +58,7 @@ class Wheat(Resource):
 
     def __init__(self):
         super().__init__("wheat")
-        self.projected_yield_column = f"projected_{self.resource}_yield"
+        self.projected_yield_column = f"{self.resource}_projected_yield"
         self.previously_dry_column = "previous_day_dry"
         self.cumulative_dry_days_column = "cumulative_dry_days"
         self.rainfall_mid_growth_column = "rainfall_mid_growth"
@@ -77,6 +79,12 @@ class Wheat(Resource):
             start_date,
             self.configuration.harvest_date.month,
             self.configuration.harvest_date.day,
+        )
+
+        self.projected_yield_pipeline = builder.value.register_value_producer(
+            f"{self.resource}.projected_yield",
+            self.get_projected_yield,
+            requires_columns=[self.projected_yield_column],
         )
 
         self.effect_of_temperature_on_yield = builder.lookup.build_table(
@@ -115,8 +123,8 @@ class Wheat(Resource):
         # if next harvest date is less than the next sowing date, update projected yield
         if self.next_harvest_date < self.next_sowing_date:
             data = self.population_view.get(event.index)
-            effect_of_temperature = self.effect_of_temperature_on_yield(data.index)
-            data[self.projected_yield_column] *= effect_of_temperature
+
+            data[self.projected_yield_column] = self.projected_yield_pipeline(data.index)
 
             updates = pd.DataFrame(data[self.projected_yield_column])
 
@@ -209,3 +217,65 @@ class Wheat(Resource):
             )
 
         return harvest_quantity
+
+    def get_projected_yield(self, index: pd.Index) -> pd.Series:
+        """
+        Gets the projected yield of wheat for each village.
+
+        :param index:
+        :return:
+        """
+        return self.population_view.get(index)[self.projected_yield_column]
+
+
+class TemperatureEffect(Component):
+    """
+    Component that manages the effect of temperature on wheat yield.
+    """
+
+    @property
+    def columns_required(self) -> Optional[List[str]]:
+        return ["temperature"]
+
+    #####################
+    # Lifecycle methods #
+    #####################
+
+    def __init__(self, target: str):
+        super().__init__()
+        self.target = target
+
+    def setup(self, builder: Builder) -> None:
+        self.effect_of_temperature_on_yield = builder.lookup.build_table(
+            self._get_effect_data(), parameter_columns=["temperature"]
+        )
+
+        builder.value.register_value_modifier(
+            "wheat.projected_yield", self.modify_yield, requires_columns=["temperature"]
+        )
+
+    ######################
+    # Pipeline modifiers #
+    ######################
+
+    def modify_yield(self, index: pd.Index, target: pd.Series) -> pd.Series:
+        """
+        Gets the effect of temperature on wheat yield.
+
+        :param index:
+        :param target:
+        :return:
+        """
+        return target * self.effect_of_temperature_on_yield(index)
+
+    ##################
+    # Helper methods #
+    ##################
+
+    def _get_effect_data(self) -> LookupTableData:
+        data_path = {
+            "wheat": EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
+        }[self.target]
+
+        data = pd.read_csv(data_path)
+        return data
