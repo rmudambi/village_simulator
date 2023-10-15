@@ -6,13 +6,26 @@ from scipy import stats
 
 
 def zero_inflated_gamma_ppf(
-    quantiles: pd.Series, zero_probability: float, shape: float, scale: float
+    quantiles: Union[float, pd.Series],
+    p_zero: Union[float, pd.Series],
+    shape: Union[float, pd.Series],
+    scale: Union[float, pd.Series],
 ) -> pd.Series:
-    values = pd.Series(0.0, index=quantiles.index)
-    non_zero = quantiles > zero_probability
-    quantiles[non_zero] = (quantiles[non_zero] - zero_probability) / (1 - zero_probability)
-    values[non_zero] = stats.gamma.ppf(quantiles[non_zero], a=shape, scale=scale)
-    return values
+    quantiles, p_zero, shape, scale = _format_distribution_parameters(
+        quantiles, p_zero, shape, scale
+    )
+
+    index = quantiles.index
+    columns = p_zero.index
+
+    quantiles = quantiles.values[:, None]
+
+    non_zero = quantiles > p_zero.values[None, :]
+    values = stats.gamma.ppf(quantiles, a=shape.values[None, :], scale=scale.values[None, :])
+    values = np.where(non_zero, values, 0.0)
+
+    samples = pd.DataFrame(values, index=index, columns=columns)
+    return samples.squeeze()
 
 
 def stretched_truncnorm_ppf(
@@ -50,10 +63,11 @@ def stretched_truncnorm_ppf(
     truncated normal distribution.
     """
     quantiles, loc, scale = _format_distribution_parameters(quantiles, loc, scale)
+    index = quantiles.index
 
     is_non_zero = loc > 0.0
-    non_zero_loc, non_zero_scale = _transpose_distribution_parameters(
-        loc[is_non_zero], scale[is_non_zero]
+    quantiles, non_zero_loc, non_zero_scale = _to_2d(
+        quantiles, loc[is_non_zero], scale[is_non_zero]
     )
 
     non_zero_scale = non_zero_scale * non_zero_loc
@@ -62,8 +76,8 @@ def stretched_truncnorm_ppf(
 
     values = stats.truncnorm.ppf(quantiles, a=a, b=5, loc=non_zero_loc, scale=non_zero_scale)
 
-    samples = pd.DataFrame(0.0, index=quantiles.index, columns=loc.index)
-    samples.loc[:, loc[is_non_zero].index] = values.T
+    samples = pd.DataFrame(0.0, index=index, columns=loc.index)
+    samples.loc[:, loc[is_non_zero].index] = values
     return samples.squeeze()
 
 
@@ -110,17 +124,16 @@ def _format_distribution_parameters(
     return quantiles, *distribution_parameters
 
 
-def _transpose_distribution_parameters(
+def _to_2d(
+    quantiles: pd.Series,
     *distribution_parameters: pd.Series,
 ) -> Tuple[np.ndarray, ...]:
     """
-    Transposes all distribution parameters to have the same shape.
-
-    Throws a ValueError if any distribution_parameters are Series with
-    mismatched indices.
+    Transposes quantiles and converts distribution parameters to a 2d array.
 
     Parameters
     ----------
+    quantiles
     distribution_parameters
         The parameters of the distribution.
 
@@ -128,5 +141,6 @@ def _transpose_distribution_parameters(
     -------
     All parameters as numpy arrays in the same order they were input.
     """
-    distribution_parameters = tuple(v.values[:, np.newaxis] for v in distribution_parameters)
-    return distribution_parameters
+    quantiles = quantiles.values[:, None]
+    distribution_parameters = tuple(v.values[None, :] for v in distribution_parameters)
+    return quantiles, *distribution_parameters

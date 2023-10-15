@@ -129,7 +129,7 @@ class Weather(Component):
             pd.Index([0]),
             ppf=zero_inflated_gamma_ppf,
             additional_key="regional_rainfall",
-            zero_probability=dry_probability,
+            p_zero=dry_probability,
             shape=config.gamma_shape_parameter,
             scale=scale,
         )[0]
