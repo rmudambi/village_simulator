@@ -11,9 +11,37 @@ def zero_inflated_gamma_ppf(
     shape: Union[float, np.ndarray] = 1.0,
     scale: Union[float, np.ndarray] = 1.0
 ) -> Union[float, pd.Series, pd.DataFrame]:
-    # todo need to implement these functions to be able to take quantiles and
-    #  distributions params with identical indices and return a series with
-    #  where the quantile is used with the corresponding distribution params
+    """
+    Return the inverse of the cumulative distribution function of a zero-inflated
+    gamma distribution.
+
+    The distribution is defined to have a probability of `p_zero` of being 0 and
+    a probability of `1 - p_zero` of being distributed according to a gamma
+    distribution with shape `shape` and scale `scale`.
+
+    This function can either take a single value or a Series for the `quantiles`
+    parameter. If a column vector is passed to any of the other parameters, it
+    must have the same length as `quantiles`. The dimensions of the output will
+    be the product of the dimensions of `quantiles` and the other parameters.
+    The resulting value will be squeezed to remove any dimensions of size 1.
+
+    Parameters
+    ----------
+    quantiles
+        The quantiles at which to compute the inverse of the cumulative
+        distribution function.
+    p_zero
+        The probability of the distribution being 0.
+    shape
+        The shape parameter of the gamma distribution.
+    scale
+        The scale parameter of the gamma distribution.
+
+    Returns
+    -------
+    The inverse of the cumulative distribution function of a zero-inflated gamma
+    distribution.
+    """
 
     quantiles, p_zero, shape, scale = _format_distribution_parameters(
         quantiles, p_zero, shape, scale
@@ -31,8 +59,8 @@ def zero_inflated_gamma_ppf(
 
 def stretched_truncnorm_ppf(
     quantiles: Union[float, pd.Series],
-    loc: Union[float, np.ndarray],
-    scale: Union[float, np.ndarray],
+    loc: Union[float, np.ndarray] = 1.0,
+    scale: Union[float, np.ndarray] = 0.1,
 ) -> Union[float, pd.Series, pd.DataFrame]:
     """
     Return the inverse of the cumulative distribution function of a stretched
@@ -42,11 +70,11 @@ def stretched_truncnorm_ppf(
     of `loc` and a standard deviation of `scale * loc`. In addition, if `loc` is
     equal to 0, it returns 0.
 
-    This function can either take a single value or a Series for each of the
-    parameters. If a Series is passed to both `loc` and `scale`, they must have
-    the same index. The dimensions of the output will be the product of the
-    dimensions of `quantiles``and `loc` or `scale`. The resulting value will be
-    squeezed to remove any dimensions of size 1.
+    This function can either take a single value or a Series for the `quantiles`
+    parameter. If a column vector is passed to any of the other parameters, it
+    must have the same length as `quantiles`. The dimensions of the output will
+    be the product of the dimensions of `quantiles` and the other parameters.
+    The resulting value will be squeezed to remove any dimensions of size 1.
 
     Parameters
     ----------
@@ -63,22 +91,21 @@ def stretched_truncnorm_ppf(
     The inverse of the cumulative distribution function of a stretched
     truncated normal distribution.
     """
-    quantiles, (loc, scale) = _format_distribution_parameters(quantiles, loc, scale)
-    index = quantiles.index
+    quantiles, loc, scale = _format_distribution_parameters(quantiles, loc, scale)
+    quantiles_values = quantiles.values[:, None]
 
+    # Temporarily set loc to 1.0 where it is 0.0 to avoid divide by zero errors
     is_non_zero = loc > 0.0
-    quantiles, non_zero_loc, non_zero_scale = _to_2d(
-        quantiles, loc[is_non_zero], scale[is_non_zero]
-    )
+    modified_loc = np.where(is_non_zero, loc, 1.0)
+    modified_scale = scale * modified_loc
+    a = -modified_loc / modified_scale
 
-    non_zero_scale = non_zero_scale * non_zero_loc
-    a = -non_zero_loc / non_zero_scale
-    a = np.where(a < -5, -5, a)
+    values = stats.truncnorm.ppf(quantiles_values, a=a, b=5, loc=modified_loc, scale=modified_scale)
 
-    values = stats.truncnorm.ppf(quantiles, a=a, b=5, loc=non_zero_loc, scale=non_zero_scale)
+    # Set values to 0.0 where loc is 0.0
+    values = np.where(np.broadcast_to(is_non_zero, values.shape), values, 0.0)
 
-    samples = pd.DataFrame(0.0, index=index, columns=loc.index)
-    samples.loc[:, loc[is_non_zero].index] = values
+    samples = pd.DataFrame(values, index=quantiles.index)
     return samples.squeeze()
 
 
@@ -130,26 +157,4 @@ def _format_distribution_parameters(
         for parameter_value in distribution_parameters
     )
 
-    return quantiles, *distribution_parameters
-
-
-def _to_2d(
-    quantiles: pd.Series,
-    *distribution_parameters: pd.Series,
-) -> Tuple[np.ndarray, ...]:
-    """
-    Transposes quantiles and converts distribution parameters to a 2d array.
-
-    Parameters
-    ----------
-    quantiles
-    distribution_parameters
-        The parameters of the distribution.
-
-    Returns
-    -------
-    All parameters as numpy arrays in the same order they were input.
-    """
-    quantiles = quantiles.values[:, None]
-    distribution_parameters = tuple(v.values[None, :] for v in distribution_parameters)
     return quantiles, *distribution_parameters

@@ -7,6 +7,7 @@ import pytest
 from village_simulator.simulation.distributions import (
     stretched_truncnorm_ppf,
     zero_inflated_gamma_ppf,
+    _format_distribution_parameters,
 )
 
 
@@ -49,6 +50,8 @@ def test_ppf_quantiles_series_kwargs_scalar_returns_series(ppf, kwargs):
 @pytest.mark.parametrize(
     "ppf, kwargs",
     [
+        (stretched_truncnorm_ppf, {"loc": 1.0, "scale": 0.5}),
+        (stretched_truncnorm_ppf, {"loc": np.array([[1.0], [5.0]])}),
         (
             zero_inflated_gamma_ppf,
             {
@@ -63,10 +66,10 @@ def test_ppf_quantiles_series_kwargs_scalar_returns_series(ppf, kwargs):
 def test_ppf_quantiles_series_returns_same_dimension_series(ppf, kwargs):
     """
     Test that the function returns a Series when quantiles is a Series and the
-    distribution kwargs are all ndarrays with the same shape or scalars.
+    distribution kwargs are all scalars or ndarrays with the same shape.
     """
     quantiles = pd.Series([0.5, 0.01])
-    actual = zero_inflated_gamma_ppf(quantiles, **kwargs)
+    actual = ppf(quantiles, **kwargs)
 
     assert isinstance(actual, pd.Series)
     assert len(actual) == len(quantiles)
@@ -75,13 +78,10 @@ def test_ppf_quantiles_series_returns_same_dimension_series(ppf, kwargs):
 @pytest.mark.parametrize(
     "ppf, kwargs",
     [
+        (stretched_truncnorm_ppf, {"loc": np.array([[1.0, 9.0, 5.0]])}),
         (
             zero_inflated_gamma_ppf,
-            {
-                "p_zero": np.array([[0.3, 0.1, 0.9]]),
-                "shape": 1.0,
-                "scale": np.array([[1.0, 3.0, 2.0]]),
-            },
+            {"p_zero": np.array([[0.3, 0.1, 0.9]]), "scale": np.array([[1.0, 3.0, 2.0]])},
         )
     ],
 )
@@ -91,69 +91,41 @@ def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
     distribution kwargs are all ndarrays with the same shape.
     """
     quantiles = pd.Series([0.5, 0.01])
-    actual = zero_inflated_gamma_ppf(quantiles, **kwargs)
+    actual = ppf(quantiles, **kwargs)
 
     assert isinstance(actual, pd.DataFrame)
     assert actual.shape == (2, 3)
 
 
-# MIXED_DIST_PARAMS = [
-#     (stretched_truncnorm_ppf, {"loc": [4.0, 6.0], "scale": 1.0}),
-#     (stretched_truncnorm_ppf, {"loc": 4.0, "scale": [1.0, 2.0]}),
-#     (zero_inflated_gamma_ppf, {"p_zero": [0.3, 0.6], "shape": 1.0, "scale": 1.0}),
-#     (zero_inflated_gamma_ppf, {"p_zero": 0.6, "shape": [1.0, 1.5], "scale": 1.0}),
-#     (zero_inflated_gamma_ppf, {"p_zero": 0.6, "shape": 1.0, "scale": [1.0, 5.0]}),
-# ]
-#
-#
-# @pytest.mark.parametrize("ppf, kwargs", MIXED_DIST_PARAMS)
-# def test_ppf_quantiles_scalar_kwargs_series_or_scalar_returns_series(ppf, kwargs):
-#     """
-#     Test that the function returns a Series when quantiles is a scalar and the
-#     distribution kwargs are a mix of Series and scalars with at least one Series
-#     """
-#     kwargs = _kwargs_list_to_series(kwargs)
-#     actual = ppf(0.5, **kwargs)
-#
-#     assert isinstance(actual, pd.Series)
-#     assert len(actual) == 2
+@pytest.mark.parametrize("ppf, num_args", [(stretched_truncnorm_ppf, 2), (zero_inflated_gamma_ppf, 3)])
+def test_ppf_calls_format_distribution_parameters(mocker, ppf, num_args):
+    """Test that the function calls _format_distribution_parameters"""
+    mock = mocker.patch(
+        "village_simulator.simulation.distributions._format_distribution_parameters",
+        return_value=(pd.Series([0.5]), *(np.array([[0.4]]) for _ in range(num_args))),
+    )
 
-
-# @pytest.mark.parametrize("ppf, kwargs", MIXED_DIST_PARAMS)
-# def test_ppf_quantiles_series_kwargs_series_or_scalar_returns_dataframe(ppf, kwargs):
-#     """
-#     Test that the function returns a DataFrame when quantiles is a Series and
-#     the distribution kwargs are a mix of Series and scalars with at least one
-#     Series
-#     """
-#     kwargs = _kwargs_list_to_series(kwargs)
-#     actual = ppf(pd.Series([0.5, 0.99, 0.01]), **kwargs)
-#
-#     assert isinstance(actual, pd.DataFrame)
-#     assert actual.shape == (3, 2)
+    ppf(0.5)
+    mock.assert_called_once()
 
 
 @pytest.mark.parametrize(
-    "ppf, kwargs, message",
+    "args, message",
     [
-        (stretched_truncnorm_ppf, {"loc": [4.0, 6.0, 2.0], "scale": [1.0, 2.0]}, "ga"),
-        (
-            zero_inflated_gamma_ppf,
-            {"p_zero": np.array([[0.3, 0.6]]), "shape": np.array([[1.0, 0.5, 0.6]])},
-            "same shape",
-        ),
-        (
-            zero_inflated_gamma_ppf, {"p_zero": np.array([[0.3], [0.6]])}, "same length as quantiles",
-        ),
-        (
-            zero_inflated_gamma_ppf, {"shape": np.array([[0.3, 4.0], [0.6, 7.0]])}, "must be one-dimensional",
-        ),
+        ((np.array([[0.3, 0.6]]), np.array([[1.0, 0.5, 0.6]])), "same shape"),
+        ((np.array([[0.3], [0.6]]),), "same length as quantiles"),
+        ((np.array([[0.3, 4.0], [0.6, 7.0]]),), "must be one-dimensional"),
     ],
 )
-def test_ppf_mismatched_distribution_parameters(ppf, kwargs, message):
+def test_format_distribution_parameters(args, message):
     """Test that the function raises an error when kwargs have different indices"""
     with pytest.raises(ValueError, match=message,):
-        ppf(pd.Series([0.5, 0.99, 0.63, 0.01]), **kwargs)
+        _format_distribution_parameters(pd.Series([0.5, 0.99, 0.63, 0.01]), *args)
+
+
+################################
+# Test stretched_truncnorm_ppf #
+################################
 
 
 def test_stretched_truncnorm_ppf_loc_zero_all_scalar():
@@ -167,18 +139,35 @@ def test_stretched_truncnorm_ppf_loc_zero_quantiles_series():
     assert stretched_truncnorm_ppf(quantiles, 0.0, 1.0).eq(0.0).all()
 
 
-def test_stretched_truncnorm_ppf_loc_some_zero():
+def test_stretched_truncnorm_ppf_loc_some_zero_1d():
+    """
+    Test that the function returns a dataframe with 0 for all values in rows
+    where loc is 0
+    """
+    quantiles = pd.Series([0.99, 0.25, 0.01, 0.5, 0.63])
+    loc = pd.Series([5.4, 0.0, 0.0, 4.1, 0.0])
+
+    actual = stretched_truncnorm_ppf(quantiles, loc=loc.values[:, None])
+
+    assert actual[loc[loc == 0.0].index].eq(0.0).all().all
+
+
+def test_stretched_truncnorm_ppf_loc_some_zero_2d():
     """
     Test that the function returns a dataframe with 0 for all values in columns
     where loc is 0
     """
     quantiles = pd.Series([0.99, 0.25, 0.01])
     loc = pd.Series([5.4, 0.0, 0.0, 4.1, 0.0])
-    scale = pd.Series(np.random.rand(len(loc)))
 
-    actual = stretched_truncnorm_ppf(quantiles, loc, scale)
+    actual = stretched_truncnorm_ppf(quantiles, loc=loc.values[None, :])
 
     assert actual.loc[:, loc[loc == 0.0].index].eq(0.0).all().all()
+
+
+################################
+# Test zero_inflated_gamma_ppf #
+################################
 
 
 def test_zero_inflated_gamma_ppf_returns_zero_scalar():
