@@ -1,7 +1,9 @@
 from vivarium import InteractiveContext
 
+from village_simulator import paths
+
 
 def test_simulation():
-    sim = InteractiveContext("../src/village_simulator/simulation/specification.yaml")
-    sim.step()
-    sim.step()
+    sim = InteractiveContext(paths.GAME_SPECIFICATION)
+    for i in range(400):
+        sim.step()

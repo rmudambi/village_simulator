@@ -64,6 +64,10 @@ class Weather(Component):
     def initialization_requirements(self) -> Dict[str, List[str]]:
         return {"requires_streams": [self.name]}
 
+    @property
+    def time_step_prepare_priority(self) -> int:
+        return 2
+
     #####################
     # Lifecycle methods #
     #####################
