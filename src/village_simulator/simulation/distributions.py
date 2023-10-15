@@ -7,31 +7,32 @@ from scipy import stats
 
 def zero_inflated_gamma_ppf(
     quantiles: Union[float, pd.Series],
-    p_zero: Union[float, pd.Series],
-    shape: Union[float, pd.Series],
-    scale: Union[float, pd.Series],
-) -> pd.Series:
+    p_zero: Union[float, np.ndarray] = 0.0,
+    shape: Union[float, np.ndarray] = 1.0,
+    scale: Union[float, np.ndarray] = 1.0
+) -> Union[float, pd.Series, pd.DataFrame]:
+    # todo need to implement these functions to be able to take quantiles and
+    #  distributions params with identical indices and return a series with
+    #  where the quantile is used with the corresponding distribution params
+
     quantiles, p_zero, shape, scale = _format_distribution_parameters(
         quantiles, p_zero, shape, scale
     )
 
-    index = quantiles.index
-    columns = p_zero.index
+    quantiles_values = quantiles.values[:, None]
 
-    quantiles = quantiles.values[:, None]
-
-    non_zero = quantiles > p_zero.values[None, :]
-    values = stats.gamma.ppf(quantiles, a=shape.values[None, :], scale=scale.values[None, :])
+    non_zero = quantiles_values > p_zero
+    values = stats.gamma.ppf(quantiles_values, a=shape, scale=scale)
     values = np.where(non_zero, values, 0.0)
 
-    samples = pd.DataFrame(values, index=index, columns=columns)
+    samples = pd.DataFrame(values, index=quantiles.index)
     return samples.squeeze()
 
 
 def stretched_truncnorm_ppf(
     quantiles: Union[float, pd.Series],
-    loc: Union[float, pd.Series],
-    scale: Union[float, pd.Series],
+    loc: Union[float, np.ndarray],
+    scale: Union[float, np.ndarray],
 ) -> Union[float, pd.Series, pd.DataFrame]:
     """
     Return the inverse of the cumulative distribution function of a stretched
@@ -62,7 +63,7 @@ def stretched_truncnorm_ppf(
     The inverse of the cumulative distribution function of a stretched
     truncated normal distribution.
     """
-    quantiles, loc, scale = _format_distribution_parameters(quantiles, loc, scale)
+    quantiles, (loc, scale) = _format_distribution_parameters(quantiles, loc, scale)
     index = quantiles.index
 
     is_non_zero = loc > 0.0
@@ -82,41 +83,49 @@ def stretched_truncnorm_ppf(
 
 
 def _format_distribution_parameters(
-    quantiles: Union[float, pd.Series], *distribution_parameters: Union[float, pd.Series]
+    quantiles: Union[float, pd.Series], *distribution_parameters: Union[float, np.ndarray]
 ) -> Tuple[pd.Series, ...]:
     """
-    Converts quantiles and all distribution parameters to Series.
+    Ensures quantiles is a Series and all distribution parameters are 2d numpy
+    arrays.
 
-    Throws a ValueError if any distribution_parameters are Series with
-    mismatched indices.
+    Throws a value error if any of the non-scalar distribution parameters do not
+    have the same dimensions, or if any of them are not one-dimensional.
 
     Parameters
     ----------
     quantiles
-        The quantiles at which to compute the inverse of the cumulative
-        distribution function.
     distribution_parameters
         The parameters of the distribution.
 
     Returns
     -------
-    All parameters as Series in the same order they were input.
+    All parameters properly formatted in the same order they were input.
     """
     quantiles = pd.Series(quantiles) if not isinstance(quantiles, pd.Series) else quantiles
 
-    parameter_series = [v.index for v in distribution_parameters if isinstance(v, pd.Series)]
-    if parameter_series:
-        series_index = parameter_series[0]
-        if not all([v.equals(parameter_series[0]) for v in parameter_series]):
+    parameter_arrays = [v.shape for v in distribution_parameters if isinstance(v, np.ndarray)]
+    if parameter_arrays:
+        array_shape = parameter_arrays[0]
+        if not all([shape == array_shape for shape in parameter_arrays]):
             raise ValueError(
-                "All distribution parameters must have the same index or be scalars."
+                "All distribution parameters must have the same shape or be scalars."
+            )
+        if array_shape[1] == 1 and array_shape[0] != len(quantiles):
+            raise ValueError(
+                "If distribution parameters are column vectors, they must have"
+                "the same length as quantiles."
+            )
+        if array_shape[0] != 1 and array_shape[1] != 1:
+            raise ValueError(
+                "All distribution parameters must be one-dimensional or be scalars."
             )
     else:
-        series_index = pd.Index([0])
+        array_shape = (1, 1)
 
     distribution_parameters = (
-        pd.Series(parameter_value, index=series_index)
-        if not isinstance(parameter_value, pd.Series)
+        np.full(array_shape, parameter_value)
+        if not isinstance(parameter_value, np.ndarray)
         else parameter_value
         for parameter_value in distribution_parameters
     )

@@ -179,6 +179,10 @@ class Resource(Component):
         return self.total_population(per_capita_value.index) * per_capita_value
 
 
+WHEAT_SOWING_DATE = {"month": 10, "day": 15}
+WHEAT_HARVEST_DATE = {"month": 5, "day": 15}
+
+
 class Wheat(Resource):
     """
     Component that manages the food resources of villages in the game.
@@ -189,8 +193,8 @@ class Wheat(Resource):
             "initial_per_capita_stores": {"loc": 10.0, "scale": 0.5},
             "annual_per_capita_consumption": {"loc": 10.0, "scale": 0.5},
             "annual_per_capita_accumulation": {"loc": 10.0, "scale": 0.5},
-            "sowing_date": {"month": 10, "day": 15},
-            "harvest_date": {"month": 5, "day": 15},
+            "sowing_date": WHEAT_SOWING_DATE,
+            "harvest_date": WHEAT_HARVEST_DATE,
         }
     }
 
