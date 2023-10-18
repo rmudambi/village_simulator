@@ -23,8 +23,8 @@ class Demographics(Component):
         "demographics": {
             "initial_village_size": {"loc": 1_000, "scale": 1.0},
             "initial_sex_ratio": {"loc": 1.0, "scale": 0.01},
-            "fertility_rate": {"loc": 0.15, "scale": 0.01},
-            "mortality_rate": {"loc": 0.1, "scale": 0.01},
+            "fertility_rate": {"loc": 0.05, "scale": 0.01},
+            "mortality_rate": {"loc": 0.04, "scale": 0.01},
         }
     }
 
