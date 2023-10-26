@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.map import FEATURE
+from village_simulator.simulation.components.village import IS_VILLAGE
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -38,15 +38,15 @@ class Demographics(Component):
 
     @property
     def columns_required(self) -> List[str]:
-        return [FEATURE]
+        return [IS_VILLAGE]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_columns": [FEATURE], "requires_streams": [self.name]}
+        return {"requires_columns": [IS_VILLAGE], "requires_streams": [self.name]}
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{FEATURE} == 'village'"
+        return f"{IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #
@@ -72,8 +72,8 @@ class Demographics(Component):
     ########################
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
-        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
-        village_index = feature[feature == "village"].index
+        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
+        village_index = is_village[is_village].index
         female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
         male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
 

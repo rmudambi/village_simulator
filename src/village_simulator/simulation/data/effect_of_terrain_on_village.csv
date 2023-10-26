@@ -1,0 +1,5 @@
+terrain,village_probability
+desert,0.128
+forest,0.512
+grassland,0.768
+mountain,0.192

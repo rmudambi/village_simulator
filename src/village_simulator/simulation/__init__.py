@@ -6,4 +6,5 @@ from village_simulator.simulation.components.farming import (
 )
 from village_simulator.simulation.components.map import Map
 from village_simulator.simulation.components.resources import Resource
+from village_simulator.simulation.components.village import Village
 from village_simulator.simulation.components.weather import Weather

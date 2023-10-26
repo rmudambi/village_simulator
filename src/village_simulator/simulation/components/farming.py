@@ -10,8 +10,8 @@ from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 
 from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
-from village_simulator.simulation.components.map import FEATURE
 from village_simulator.simulation.components.resources import Resource
+from village_simulator.simulation.components.village import IS_VILLAGE
 from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
@@ -84,7 +84,7 @@ class Wheat(Resource):
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         super().on_initialize_simulants(pop_data)
 
-        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
+        feature = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
         # todo check if we can't just use the index of `feature`
         village_index = feature[feature == "village"].index
 
@@ -298,7 +298,7 @@ class RainfallEffectOnWheat(Component):
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{FEATURE} == 'village'"
+        return f"{IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #

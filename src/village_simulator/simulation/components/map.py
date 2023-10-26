@@ -8,7 +8,7 @@ from vivarium.framework.population import SimulantData
 
 X = "x"
 Y = "y"
-FEATURE = "feature"
+TERRAIN = "terrain"
 
 
 class Map(Component):
@@ -27,7 +27,7 @@ class Map(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [X, Y, FEATURE]
+        return [X, Y, TERRAIN]
 
     #####################
     # Lifecycle methods #
@@ -49,7 +49,9 @@ class Map(Component):
         self.register_simulants(coordinates[self.key_columns])
         self.population_view.update(coordinates)
 
-        feature = self.randomness.choice(
-            pop_data.index, ["village", "forest"], [0.1, 0.9], "initialize_features"
-        ).rename(FEATURE)
-        self.population_view.update(feature)
+        terrain = self.randomness.choice(
+            pop_data.index,
+            ["grassland", "desert", "forest", "mountain"],
+            additional_key="initialize_terrain",
+        ).rename(TERRAIN)
+        self.population_view.update(terrain)

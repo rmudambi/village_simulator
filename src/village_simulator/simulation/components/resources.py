@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.map import FEATURE
+from village_simulator.simulation.components.village import IS_VILLAGE
 
 
 class Resource(Component):
@@ -37,7 +37,7 @@ class Resource(Component):
 
     @property
     def columns_required(self) -> Optional[List[str]]:
-        return [FEATURE]
+        return [IS_VILLAGE]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
@@ -45,7 +45,7 @@ class Resource(Component):
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{FEATURE} == 'village'"
+        return f"{IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #
@@ -98,8 +98,8 @@ class Resource(Component):
         :param pop_data:
         :return:
         """
-        feature = self.population_view.subview([FEATURE]).get(pop_data.index)
-        village_index = feature[feature == "village"].index
+        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
+        village_index = is_village[is_village].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
         stores[village_index] = (

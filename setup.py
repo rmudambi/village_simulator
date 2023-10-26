@@ -37,7 +37,7 @@ if __name__ == "__main__":
         "numpy",
         "pandas",
         "scipy",
-        "vivarium>=2.1.1",
+        "vivarium>=2.2.1",
     ]
 
     setup_requires = ["setuptools_scm"]

@@ -3,6 +3,7 @@ components:
         simulation:
             - Map()
             - Weather()
+            - Village()
             - Demographics()
             - Wheat()
             - RainfallEffectOnWheat()
@@ -15,6 +16,8 @@ configuration:
     randomness:
         random_seed: 1
         key_columns: ["x", "y"]
+    interpolation:
+        validate: False
     time:
         start:
             year: 2000
