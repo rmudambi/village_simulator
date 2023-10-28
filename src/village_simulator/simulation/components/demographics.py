@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.village import IS_VILLAGE, ARABLE_LAND
+from village_simulator.simulation.components.village import ARABLE_LAND, IS_VILLAGE
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -42,7 +42,10 @@ class Demographics(Component):
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_columns": [IS_VILLAGE, ARABLE_LAND], "requires_streams": [self.name]}
+        return {
+            "requires_columns": [IS_VILLAGE, ARABLE_LAND],
+            "requires_streams": [self.name],
+        }
 
     @property
     def population_view_query(self) -> Optional[str]:

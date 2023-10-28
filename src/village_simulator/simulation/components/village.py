@@ -4,7 +4,7 @@ import pandas as pd
 from scipy import stats
 from vivarium import Component
 from vivarium.framework.engine import Builder
-from vivarium.framework.population import SimulantData, PopulationView
+from vivarium.framework.population import SimulantData
 
 from village_simulator.paths import (
     EFFECT_OF_TERRAIN_ON_ARABLE_LAND,

@@ -9,6 +9,7 @@ from vivarium.framework.event import Event
 from vivarium.framework.lookup import LookupTableData
 from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
+from vivarium.framework.utilities import from_yearly
 
 from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
 from village_simulator.simulation.components.resources import Resource
@@ -27,7 +28,7 @@ class Wheat(Resource):
 
     CONFIGURATION_DEFAULTS = {
         "resource": {
-            "initial_per_capita_stores": {"loc": 0.6, "scale": 0.025},
+            "initial_per_capita_stores": {"loc": 0.5, "scale": 0.1},
             "annual_per_capita_consumption": {"loc": 0.5, "scale": 0.025},
             "land_cultivation_per_capita": {"loc": 5e-4, "scale": 1e-5},
             "land_productivity": {"loc": 1000.0, "scale": 10.0},
@@ -152,6 +153,14 @@ class Wheat(Resource):
             requires_streams=[self.name],
         )
 
+    def register_consumption(self, builder):
+        return builder.value.register_value_producer(
+            f"{self.resource}.consumption",
+            self.get_consumption_rate,
+            requires_values=["total_population"],
+            requires_streams=[self.name],
+        )
+
     ####################
     # Pipeline sources #
     ####################
@@ -174,6 +183,36 @@ class Wheat(Resource):
             )
 
         return harvest_quantity
+
+    def get_consumption_rate(self, index: pd.Index) -> pd.Series:
+        """
+        Gets the rate at which wheat is consumed by each village.
+
+        This is an annual rate, which will be rescaled to the time-step by the
+        pipeline's post-processor.
+
+        :param index:
+        :return:
+        """
+        wheat_stores = self.population_view.get(index)[self.resource_stores]
+        steps_to_next_harvest = (self.next_harvest_date - self.clock()) / self.step_size()
+        store_depletion_rate = wheat_stores / steps_to_next_harvest
+
+        natural_consumption_rate = from_yearly(
+            self.total_population(index)
+            * self.randomness.sample_from_distribution(
+                index,
+                distribution=stats.norm,
+                additional_key=f"{self.resource}.consumption",
+                **self.configuration.annual_per_capita_consumption.to_dict(),
+            ),
+            self.step_size(),
+        )
+
+        consumption_rate = pd.concat(
+            [wheat_stores, store_depletion_rate, natural_consumption_rate], axis=1
+        ).min(axis=1)
+        return consumption_rate
 
     def get_projected_yield(self, index: pd.Index) -> pd.Series:
         """Gets the projected yield of wheat for each village."""

@@ -122,31 +122,13 @@ class Resource(Component):
         :return:
         """
         resource = self.population_view.get(event.index)[self.resource_stores]
-        resource -= self.consumption(event.index)
-        resource += self.accumulation(event.index)
+        resource -= self.consumption(resource.index)
+        resource += self.accumulation(resource.index)
         self.population_view.update(resource)
 
     ####################
     # Pipeline sources #
     ####################
-
-    def get_consumption_rate(self, index: pd.Index) -> pd.Series:
-        """
-        Gets the rate at which the resource is consumed by each village.
-
-        This is an annual rate, which will be rescaled to the time-step by the
-        pipeline's post-processor.
-
-        :param index:
-        :return:
-        """
-        consumption_per_capita = self.randomness.sample_from_distribution(
-            index,
-            distribution=stats.norm,
-            additional_key=f"{self.resource}.consumption",
-            **self.configuration.annual_per_capita_consumption.to_dict(),
-        )
-        return self.get_total_from_per_capita(consumption_per_capita)
 
     def get_accumulation_rate(self, index: pd.Index) -> pd.Series:
         """
@@ -165,6 +147,24 @@ class Resource(Component):
             **self.configuration.annual_per_capita_accumulation.to_dict(),
         )
         return self.get_total_from_per_capita(accumulation_per_capita)
+
+    def get_consumption_rate(self, index: pd.Index) -> pd.Series:
+        """
+        Gets the rate at which the resource is consumed by each village.
+
+        This is an annual rate, which will be rescaled to the time-step by the
+        pipeline's post-processor.
+
+        :param index:
+        :return:
+        """
+        consumption_per_capita = self.randomness.sample_from_distribution(
+            index,
+            distribution=stats.norm,
+            additional_key=f"{self.resource}.consumption",
+            **self.configuration.annual_per_capita_consumption.to_dict(),
+        )
+        return self.get_total_from_per_capita(consumption_per_capita)
 
     ##################
     # Helper methods #
