@@ -1,7 +1,8 @@
 import dataclasses
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import pandas as pd
+from scipy import stats
 from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
@@ -11,7 +12,7 @@ from vivarium.framework.time import get_time_stamp
 
 from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
 from village_simulator.simulation.components.resources import Resource
-from village_simulator.simulation.components.village import IS_VILLAGE
+from village_simulator.simulation.components.village import ARABLE_LAND, IS_VILLAGE
 from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
@@ -26,9 +27,10 @@ class Wheat(Resource):
 
     CONFIGURATION_DEFAULTS = {
         "resource": {
-            "initial_per_capita_stores": {"loc": 10.0, "scale": 0.5},
-            "annual_per_capita_consumption": {"loc": 10.0, "scale": 0.5},
-            "annual_per_capita_accumulation": {"loc": 10.0, "scale": 0.5},
+            "initial_per_capita_stores": {"loc": 0.6, "scale": 0.025},
+            "annual_per_capita_consumption": {"loc": 0.5, "scale": 0.025},
+            "land_cultivation_per_capita": {"loc": 5e-4, "scale": 1e-5},
+            "land_productivity": {"loc": 1000.0, "scale": 10.0},
             "sowing_date": WHEAT_SOWING_DATE,
             "harvest_date": WHEAT_HARVEST_DATE,
         }
@@ -41,6 +43,16 @@ class Wheat(Resource):
     @property
     def columns_created(self) -> List[str]:
         return super().columns_created + [self.projected_yield_column]
+
+    @property
+    def columns_required(self) -> Optional[List[str]]:
+        return super().columns_required + [ARABLE_LAND]
+
+    @property
+    def initialization_requirements(self) -> Dict[str, List[str]]:
+        requirements = super().initialization_requirements
+        requirements["requires_columns"] += [ARABLE_LAND]
+        return requirements
 
     #####################
     # Lifecycle methods #
@@ -84,16 +96,16 @@ class Wheat(Resource):
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         super().on_initialize_simulants(pop_data)
 
-        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
-        village_index = is_village[is_village].index
+        arable_land = self.population_view.subview([ARABLE_LAND]).get(pop_data.index)
 
-        projected_yield = pd.Series(
-            0.0, index=pop_data.index, name=self.projected_yield_column
+        init_data = pd.DataFrame(
+            0.0, columns=[self.projected_yield_column], index=pop_data.index
         )
-        projected_yield[village_index] = (
-            self.initial_village_size * self.configuration.annual_per_capita_accumulation.loc
-        )
-        self.population_view.update(projected_yield)
+        init_data.loc[
+            arable_land.index, self.projected_yield_column
+        ] = self.initialize_projected_yield(arable_land.squeeze(axis=1))
+
+        self.population_view.update(init_data)
 
     def on_time_step(self, event: Event) -> None:
         """
@@ -124,11 +136,8 @@ class Wheat(Resource):
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
             self.next_harvest_date += ONE_YEAR
 
-            index = self.population_view.get(event.index).index
-            projected_yield = (
-                self.total_population(index)
-                * self.configuration.annual_per_capita_accumulation.loc
-            ).rename(self.projected_yield_column)
+            arable_land = self.population_view.get(event.index)[ARABLE_LAND]
+            projected_yield = self.initialize_projected_yield(arable_land)
             self.population_view.update(projected_yield)
 
     #################
@@ -169,6 +178,35 @@ class Wheat(Resource):
     def get_projected_yield(self, index: pd.Index) -> pd.Series:
         """Gets the projected yield of wheat for each village."""
         return self.population_view.get(index)[self.projected_yield_column]
+
+    ##################
+    # Helper methods #
+    ##################
+
+    def initialize_projected_yield(self, arable_land: pd.Series) -> pd.Series:
+        """
+        Gets the projected yield of wheat for each village.
+
+        :param arable_land:
+        :return:
+        """
+        land_cultivation_per_capita = self.randomness.sample_from_distribution(
+            arable_land.index,
+            stats.norm,
+            additional_key="land_cultivation",
+            **self.configuration.land_cultivation_per_capita.to_dict(),
+        )
+        land_under_cultivation = arable_land.combine(
+            self.total_population(arable_land.index) * land_cultivation_per_capita, min
+        )
+
+        projected_yield = land_under_cultivation * self.randomness.sample_from_distribution(
+            land_under_cultivation.index,
+            stats.norm,
+            additional_key="projected_yield",
+            **self.configuration.land_productivity.to_dict(),
+        )
+        return projected_yield.rename(self.projected_yield_column)
 
 
 class TemperatureEffect(Component):

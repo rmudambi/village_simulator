@@ -41,7 +41,11 @@ class Resource(Component):
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_values": ["total_population"], "requires_streams": [self.name]}
+        return {
+            "requires_columns": [IS_VILLAGE],
+            "requires_values": ["total_population"],
+            "requires_streams": [self.name],
+        }
 
     @property
     def population_view_query(self) -> Optional[str]:
@@ -58,9 +62,6 @@ class Resource(Component):
 
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration[self.resource]
-        self.initial_village_size = (
-            builder.configuration.demographics.initial_village_size.loc
-        )
         self.randomness = builder.randomness.get_stream(self.name)
         self.total_population = builder.value.get_value("total_population")
 
@@ -102,14 +103,13 @@ class Resource(Component):
         village_index = is_village[is_village].index
         stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
 
-        stores[village_index] = (
-            self.randomness.sample_from_distribution(
-                village_index,
-                distribution=stats.norm,
-                additional_key=self.resource,
-                **self.configuration.initial_per_capita_stores.to_dict(),
-            )
-            * self.initial_village_size
+        stores[village_index] = self.total_population(
+            village_index
+        ) * self.randomness.sample_from_distribution(
+            village_index,
+            distribution=stats.norm,
+            additional_key=self.resource,
+            **self.configuration.initial_per_capita_stores.to_dict(),
         )
 
         self.population_view.update(stores)

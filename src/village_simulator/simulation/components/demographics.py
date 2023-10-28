@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.village import IS_VILLAGE
+from village_simulator.simulation.components.village import IS_VILLAGE, ARABLE_LAND
 from village_simulator.simulation.utilities import round_stochastic
 
 FEMALE_POPULATION_SIZE = "female_population_size"
@@ -38,11 +38,11 @@ class Demographics(Component):
 
     @property
     def columns_required(self) -> List[str]:
-        return [IS_VILLAGE]
+        return [IS_VILLAGE, ARABLE_LAND]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_columns": [IS_VILLAGE], "requires_streams": [self.name]}
+        return {"requires_columns": [IS_VILLAGE, ARABLE_LAND], "requires_streams": [self.name]}
 
     @property
     def population_view_query(self) -> Optional[str]:
@@ -72,29 +72,28 @@ class Demographics(Component):
     ########################
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
-        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
-        village_index = is_village[is_village].index
+        state = self.population_view.subview([ARABLE_LAND]).get(pop_data.index)
         female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
         male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
 
-        village_size = self.randomness.sample_from_distribution(
-            village_index,
+        village_size = state[ARABLE_LAND] * self.randomness.sample_from_distribution(
+            state.index,
             distribution=stats.norm,
             additional_key="initial_village_size",
             **self.configuration.initial_village_size.to_dict(),
         )
 
         sex_ratio = self.randomness.sample_from_distribution(
-            village_index,
+            state.index,
             distribution=stats.norm,
             additional_key="initial_sex_ratio",
             **self.configuration.initial_sex_ratio.to_dict(),
         )
 
-        female_village_size[village_index] = round_stochastic(
+        female_village_size[state.index] = round_stochastic(
             village_size * sex_ratio / 2.0, self.randomness, "initial_female_village_size"
         )
-        male_village_size[village_index] = round_stochastic(
+        male_village_size[state.index] = round_stochastic(
             village_size * (1.0 - sex_ratio / 2.0),
             self.randomness,
             "initial_male_village_size",
