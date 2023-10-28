@@ -84,9 +84,8 @@ class Wheat(Resource):
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         super().on_initialize_simulants(pop_data)
 
-        feature = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
-        # todo check if we can't just use the index of `feature`
-        village_index = feature[feature == "village"].index
+        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
+        village_index = is_village[is_village].index
 
         projected_yield = pd.Series(
             0.0, index=pop_data.index, name=self.projected_yield_column

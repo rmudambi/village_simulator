@@ -1,0 +1,5 @@
+terrain,loc,scale
+desert,0.05,0.01
+forest,0.4,0.1
+grassland,0.7,0.15
+mountain,0.1,0.03

@@ -36,9 +36,9 @@ as 1200%. Rainfall can explain ~40% of variation.
 **Land under cultivation**
 
 Land under cultivation will be a function of population and arable land. The
-amount of arable land is a function of terrain and irrigation. In particular,
-it is proportional to the population of the village and capped by the amount of
-arable land available.
+amount of arable land is a function of terrain and irrigation. Land under
+cultivation is proportional to the population of the village and capped by the
+amount of arable land available.
 
 **Amount of crop planted**
 
