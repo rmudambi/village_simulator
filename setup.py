@@ -47,6 +47,7 @@ if __name__ == "__main__":
         "ipywidgets",
         "jupyter",
         "matplotlib",
+        "tqdm",
     ]
 
     test_requirements = [

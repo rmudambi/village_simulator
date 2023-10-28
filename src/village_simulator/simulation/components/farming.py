@@ -94,6 +94,13 @@ class Wheat(Resource):
 
         self.get_total_population = builder.value.get_value("total_population")
 
+        builder.value.register_value_modifier(
+            "mortality_rate",
+            self.modify_mortality_rate,
+            requires_values=["total_population", f"{self.resource}.consumption"],
+            requires_streams=[self.name],
+        )
+
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         super().on_initialize_simulants(pop_data)
 
@@ -148,7 +155,7 @@ class Wheat(Resource):
     def register_accumulation(self, builder):
         return builder.value.register_value_producer(
             f"{self.resource}.accumulation",
-            self.get_harvest_quantity,
+            self.get_harvest_quantity_source,
             requires_values=["total_population"],
             requires_streams=[self.name],
         )
@@ -156,7 +163,7 @@ class Wheat(Resource):
     def register_consumption(self, builder):
         return builder.value.register_value_producer(
             f"{self.resource}.consumption",
-            self.get_consumption_rate,
+            self.get_consumption_rate_source,
             requires_values=["total_population"],
             requires_streams=[self.name],
         )
@@ -165,7 +172,7 @@ class Wheat(Resource):
     # Pipeline sources #
     ####################
 
-    def get_harvest_quantity(self, index: pd.Index) -> pd.Series:
+    def get_harvest_quantity_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the total amount of food accumulated during this time-step.
 
@@ -184,7 +191,7 @@ class Wheat(Resource):
 
         return harvest_quantity
 
-    def get_consumption_rate(self, index: pd.Index) -> pd.Series:
+    def get_consumption_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which wheat is consumed by each village.
 
@@ -198,16 +205,7 @@ class Wheat(Resource):
         steps_to_next_harvest = (self.next_harvest_date - self.clock()) / self.step_size()
         store_depletion_rate = wheat_stores / steps_to_next_harvest
 
-        natural_consumption_rate = from_yearly(
-            self.total_population(index)
-            * self.randomness.sample_from_distribution(
-                index,
-                distribution=stats.norm,
-                additional_key=f"{self.resource}.consumption",
-                **self.configuration.annual_per_capita_consumption.to_dict(),
-            ),
-            self.step_size(),
-        )
+        natural_consumption_rate = self.get_natural_consumption_rate(index)
 
         consumption_rate = pd.concat(
             [wheat_stores, store_depletion_rate, natural_consumption_rate], axis=1
@@ -217,6 +215,25 @@ class Wheat(Resource):
     def get_projected_yield(self, index: pd.Index) -> pd.Series:
         """Gets the projected yield of wheat for each village."""
         return self.population_view.get(index)[self.projected_yield_column]
+
+    ######################
+    # Pipeline modifiers #
+    ######################
+
+    def modify_mortality_rate(self, index: pd.Index, target: pd.Series) -> pd.Series:
+        """
+        Gets the effect of wheat consumption on mortality rate.
+
+        :param index:
+        :param target:
+        :return:
+        """
+        natural_consumption = self.get_natural_consumption_rate(index)
+        actual_consumption = self.consumption(index)
+        effect = (natural_consumption / actual_consumption) ** 10
+        mortality_rate = target.mul(effect, axis=0)
+
+        return mortality_rate
 
     ##################
     # Helper methods #
@@ -246,6 +263,19 @@ class Wheat(Resource):
             **self.configuration.land_productivity.to_dict(),
         )
         return projected_yield.rename(self.projected_yield_column)
+
+    def get_natural_consumption_rate(self, index: pd.Index) -> pd.Series:
+        natural_consumption_rate = from_yearly(
+            self.total_population(index)
+            * self.randomness.sample_from_distribution(
+                index,
+                distribution=stats.norm,
+                additional_key=f"{self.resource}.consumption",
+                **self.configuration.annual_per_capita_consumption.to_dict(),
+            ),
+            self.step_size(),
+        )
+        return natural_consumption_rate
 
 
 class TemperatureEffect(Component):

@@ -75,7 +75,7 @@ class Resource(Component):
     def register_accumulation(self, builder):
         return builder.value.register_rate_producer(
             f"{self.resource}.accumulation",
-            self.get_accumulation_rate,
+            self.get_accumulation_rate_source,
             requires_values=["total_population"],
             requires_streams=[self.name],
         )
@@ -83,7 +83,7 @@ class Resource(Component):
     def register_consumption(self, builder):
         return builder.value.register_rate_producer(
             f"{self.resource}.consumption",
-            self.get_consumption_rate,
+            self.get_consumption_rate_source,
             requires_values=["total_population"],
             requires_streams=[self.name],
         )
@@ -130,7 +130,7 @@ class Resource(Component):
     # Pipeline sources #
     ####################
 
-    def get_accumulation_rate(self, index: pd.Index) -> pd.Series:
+    def get_accumulation_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which the resource is accumulated by each village.
 
@@ -148,7 +148,7 @@ class Resource(Component):
         )
         return self.get_total_from_per_capita(accumulation_per_capita)
 
-    def get_consumption_rate(self, index: pd.Index) -> pd.Series:
+    def get_consumption_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which the resource is consumed by each village.
 
