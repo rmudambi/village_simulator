@@ -4,6 +4,7 @@ from vivarium import InteractiveContext
 
 from village_simulator import paths
 from village_simulator.interface import actions
+from village_simulator.interface.utilities import make_bold, get_date_text
 
 
 @click.group()
@@ -24,7 +25,10 @@ def play(debug: bool):
     simulation = InteractiveContext(paths.GAME_SPECIFICATION)
     console = Console()
 
-    flavor_message = "\nIt is the year 3000 BC. You are the chieftain of a small village.\n"
+    action_output = make_bold(
+        "\nIt is the year 3000 BC. You are the chieftain of a small village.\n"
+    )
+    test_option = '\n  - test (t)' if debug else ''
     base_message = (
         "What would you like to do now?"
         "\n\nOptions:"
@@ -32,13 +36,14 @@ def play(debug: bool):
         "\n  - show map (m)"
         "\n  - step (s)"
         "\n  - exit (x)"
+        f"{test_option}"
         "\n\n>>> "
     )
 
     playing = True
     while playing:
-        console.rule()
-        user_input = console.input(f"[bold]{flavor_message}[/bold]{base_message}")
+        console.rule(f"[bold red]{get_date_text(simulation)}")
+        user_input = console.input(action_output + base_message)
 
         match user_input:
             case "observe" | "o":
@@ -47,12 +52,14 @@ def play(debug: bool):
                 action = actions.show_map
             case "step" | "s":
                 action = actions.step
+            case "test" | "t":
+                action = actions.test
             case "exit" | "x":
                 playing = False
                 action = actions.finish_game
             case _:
                 action = actions.invalid_input
 
-        flavor_message = action(simulation, user_input=user_input, debug=debug)
+        action_output = action(simulation, user_input=user_input, debug=debug)
 
-    console.print("Thank you for playing! Goodbye!")
+    console.print(make_bold("Thank you for playing! Goodbye!"))
