@@ -4,7 +4,7 @@ import numpy as np
 from vivarium import InteractiveContext
 
 from village_simulator.interface.utilities import make_bold
-from village_simulator.simulation.components.map import X, Y
+from village_simulator.simulation.components.map import X, Y, TERRAIN
 from village_simulator.simulation.components.village import IS_VILLAGE
 
 
@@ -21,20 +21,40 @@ def observe(simulation: InteractiveContext, **_: Any) -> str:
     return make_bold(output)
 
 
-def show_map(simulation: InteractiveContext, **_: Any) -> str:
+def show_map(simulation: InteractiveContext, user_input: str, **kwargs: Any) -> str:
     """Display the map."""
-    cell_width = 3
 
-    coordinates = simulation.get_population()[[X, Y, IS_VILLAGE]].reset_index()
+    if user_input == "mv":
+        mapped_column = IS_VILLAGE
+        cell_width = 3
+        formatter = {
+            True: "[bold green] V [/bold green]",
+            False: "---",
+        }
+
+    elif user_input == "mt":
+        mapped_column = TERRAIN
+        cell_width = 3
+        formatter = {
+            "mountain": "[bold blue] M [/bold blue]",
+            "forest": "[bold green] F [/bold green]",
+            "grassland": "[bold yellow] G [/bold yellow]",
+            "desert": "[bold red] D [/bold red]",
+        }
+
+    else:
+        return make_bold("\nAvailable map modes are 'mv' (village) and 'mt' (terrain).\n\n")
+
+    coordinates = simulation.get_population()[[X, Y, mapped_column]].reset_index()
 
     # Determine the maximum x and y coordinates to define the grid size
     max_x = coordinates[X].max() + 1
     max_y = coordinates[Y].max() + 1
 
     # Create a grid and fill it with the index values
-    grid = np.full((max_y, max_x), "---", dtype=f"U{cell_width}")
+    grid = np.full((max_y, max_x), "-", dtype="object")
     grid[coordinates[Y].values, coordinates[X].values] = (
-        coordinates[IS_VILLAGE].map({True: " V ", False: "---"}).values
+        coordinates[mapped_column].map(formatter).values
     )
 
     # Add border to grid
@@ -47,21 +67,12 @@ def show_map(simulation: InteractiveContext, **_: Any) -> str:
         horizontal_border + "\n".join([" ".join(row) for row in grid]) + horizontal_border
     )
 
-    map_string = map_string.replace(" V ", "[bold green] V [/bold green]")
-
     output = f"\n{make_bold('Here is a map of the world:')}\n{map_string}\n"
+
     return output
 
 
-def test(simulation: InteractiveContext, **_: Any) -> str:
-    """Run a test."""
-    output = f"\nRunning a test.\n\n"
-    a = np.array([[1, 2, 3], [4, 555, 6], [7, 8, 9], [0, -1, -2]])
-    output += f"{a}\n\n"
-    return make_bold(output)
-
-
-def invalid_input(simulation: InteractiveContext, user_input: str, **_: Any) -> str:
+def invalid_input(_: InteractiveContext, user_input: str, **__: Any) -> str:
     """Handle invalid input from the player."""
     output = f"\nInvalid command provided: '{user_input}'\n\n"
     return make_bold(output)

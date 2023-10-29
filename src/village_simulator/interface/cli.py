@@ -28,7 +28,6 @@ def play(debug: bool):
     action_output = make_bold(
         "\nIt is the year 3000 BC. You are the chieftain of a small village.\n"
     )
-    test_option = '\n  - test (t)' if debug else ''
     base_message = (
         "What would you like to do now?"
         "\n\nOptions:"
@@ -36,7 +35,6 @@ def play(debug: bool):
         "\n  - show map (m)"
         "\n  - step (s)"
         "\n  - exit (x)"
-        f"{test_option}"
         "\n\n>>> "
     )
 
@@ -48,12 +46,10 @@ def play(debug: bool):
         match user_input:
             case "observe" | "o":
                 action = actions.observe
-            case "show map" | "m":
+            case "show map" | _ if user_input.startswith("m"):
                 action = actions.show_map
             case "step" | "s":
                 action = actions.step
-            case "test" | "t":
-                action = actions.test
             case "exit" | "x":
                 playing = False
                 action = actions.finish_game
