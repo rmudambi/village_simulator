@@ -7,22 +7,22 @@ from village_simulator.simulation.components.map import X, Y
 from village_simulator.simulation.components.village import IS_VILLAGE
 
 
-def _get_date_flavor_text(simulation: InteractiveContext) -> str:
+def _get_date_text(simulation: InteractiveContext) -> str:
     date = simulation.current_time.strftime("%b %d, %Y")
     return f"It now is {date}.\n"
 
 
 def step(simulation: InteractiveContext, **_: Any) -> str:
     """Progress the game."""
-    print(f"\nAdvancing the game by {simulation.configuration.time.step_size} days.\n")
+    output = f"\nAdvancing the game by {simulation.configuration.time.step_size} days.\n\n"
     simulation.step()
-    return _get_date_flavor_text(simulation)
+    return output + _get_date_text(simulation)
 
 
 def observe(simulation: InteractiveContext, **_: Any) -> str:
     """Observe the state of the game."""
-    print(f"\nHere is the state of the world:\n\n{simulation.get_population()}\n")
-    return _get_date_flavor_text(simulation)
+    output = f"\nHere is the state of the world:\n\n{simulation.get_population()}\n\n"
+    return output + _get_date_text(simulation)
 
 
 def show_map(simulation: InteractiveContext, **_: Any) -> str:
@@ -42,19 +42,18 @@ def show_map(simulation: InteractiveContext, **_: Any) -> str:
     # Generate the string representation of the grid
     map_string = "\n".join([" ".join(row) for row in grid])
 
-    print(f"\nHere is a map of the world:\n\n{map_string}\n")
-    return _get_date_flavor_text(simulation)
+    output = f"\nHere is a map of the world:\n\n{map_string}\n\n"
+    return output + _get_date_text(simulation)
 
 
 def invalid_input(simulation: InteractiveContext, user_input: str, **_: Any) -> str:
     """Handle invalid input from the player."""
-    print(f"\nInvalid command provided: '{user_input}'\n")
-    return _get_date_flavor_text(simulation)
+    output = f"\nInvalid command provided: '{user_input}'\n\n"
+    return output + _get_date_text(simulation)
 
 
 def finish_game(simulation: InteractiveContext, debug: bool = False, **_: Any) -> str:
     """Finish the game."""
     if debug:
         simulation.finalize()
-    print("Thank you for playing! Goodbye!")
     return ""

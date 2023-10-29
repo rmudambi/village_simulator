@@ -1,4 +1,5 @@
 import click
+from rich.console import Console
 from vivarium import InteractiveContext
 
 from village_simulator import paths
@@ -21,16 +22,23 @@ def village_simulator():
 def play(debug: bool):
     """Play a Village Simulator game."""
     simulation = InteractiveContext(paths.GAME_SPECIFICATION)
+    console = Console()
 
-    flavor_message = "It is the year 3000 BC. You are the chieftain of a small village.\n"
+    flavor_message = "\nIt is the year 3000 BC. You are the chieftain of a small village.\n"
     base_message = (
         "What would you like to do now?"
-        "\n\nOptions:\n\t- observe (o)\n\t- show map (m)\n\t- step (s)\n\t- exit (x)\n"
+        "\n\nOptions:"
+        "\n  - observe (o)"
+        "\n  - show map (m)"
+        "\n  - step (s)"
+        "\n  - exit (x)"
+        "\n\n>>> "
     )
 
     playing = True
     while playing:
-        user_input = input(flavor_message + base_message)
+        console.rule()
+        user_input = console.input(f"[bold]{flavor_message}[/bold]{base_message}")
 
         match user_input:
             case "observe" | "o":
@@ -46,3 +54,5 @@ def play(debug: bool):
                 action = actions.invalid_input
 
         flavor_message = action(simulation, user_input=user_input, debug=debug)
+
+    console.print("Thank you for playing! Goodbye!")

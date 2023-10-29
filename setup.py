@@ -36,6 +36,7 @@ if __name__ == "__main__":
         "click",
         "numpy",
         "pandas",
+        "rich",
         "scipy",
         "vivarium>=2.2.1",
     ]
