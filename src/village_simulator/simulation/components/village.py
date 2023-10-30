@@ -6,14 +6,11 @@ from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.population import SimulantData
 
-from village_simulator.paths import (
+from village_simulator.constants import Columns
+from village_simulator.constants.paths import (
     EFFECT_OF_TERRAIN_ON_ARABLE_LAND,
     EFFECT_OF_TERRAIN_ON_VILLAGE,
 )
-from village_simulator.simulation.components.map import TERRAIN
-
-IS_VILLAGE = "is_village"
-ARABLE_LAND = "arable_land"
 
 
 class Village(Component):
@@ -29,11 +26,11 @@ class Village(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [IS_VILLAGE, ARABLE_LAND]
+        return [Columns.IS_VILLAGE, Columns.ARABLE_LAND]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
-        return {"requires_columns": [TERRAIN], "requires_streams": [self.name]}
+        return {"requires_columns": [Columns.TERRAIN], "requires_streams": [self.name]}
 
     #####################
     # Lifecycle methods #
@@ -44,11 +41,11 @@ class Village(Component):
         self.randomness = builder.randomness.get_stream(self.name)
 
         self.effect_of_terrain_on_village = builder.lookup.build_table(
-            pd.read_csv(EFFECT_OF_TERRAIN_ON_VILLAGE), key_columns=[TERRAIN]
+            pd.read_csv(EFFECT_OF_TERRAIN_ON_VILLAGE), key_columns=[Columns.TERRAIN]
         )
 
         self.effect_of_terrain_on_arable_land = builder.lookup.build_table(
-            pd.read_csv(EFFECT_OF_TERRAIN_ON_ARABLE_LAND), key_columns=[TERRAIN]
+            pd.read_csv(EFFECT_OF_TERRAIN_ON_ARABLE_LAND), key_columns=[Columns.TERRAIN]
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
@@ -59,7 +56,7 @@ class Village(Component):
 
         initial_values = pd.DataFrame(index=pop_data.index)
 
-        initial_values[IS_VILLAGE] = self.randomness.choice(
+        initial_values[Columns.IS_VILLAGE] = self.randomness.choice(
             pop_data.index,
             [True, False],
             probabilities.to_numpy(),
@@ -67,7 +64,7 @@ class Village(Component):
         )
 
         arable_land_data = self.effect_of_terrain_on_arable_land(pop_data.index)
-        initial_values[ARABLE_LAND] = self.randomness.sample_from_distribution(
+        initial_values[Columns.ARABLE_LAND] = self.randomness.sample_from_distribution(
             pop_data.index,
             stats.norm,
             additional_key="arable_land",

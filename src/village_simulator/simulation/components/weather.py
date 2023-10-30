@@ -8,6 +8,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
+from village_simulator.constants import Columns, Pipelines
 from village_simulator.simulation.distributions import (
     stretched_truncnorm_ppf,
     zero_inflated_gamma_ppf,
@@ -29,7 +30,7 @@ class Weather(Component):
 
     CONFIGURATION_DEFAULTS = {
         "weather": {
-            "temperature": {
+            Pipelines.TEMPERATURE: {
                 "mean": 65.0,
                 "seasonality": {
                     "amplitude": 15.0,
@@ -38,7 +39,7 @@ class Weather(Component):
                 "stochastic_variability": 5.0,
                 "local_variability": 2.0,
             },
-            "rainfall": {
+            Pipelines.RAINFALL: {
                 "seasonality": {
                     "min": RAINFALL_SEASONALITY_MIN,
                     "max": RAINFALL_SEASONALITY_MAX,
@@ -58,7 +59,7 @@ class Weather(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return ["temperature", "rainfall"]
+        return [Columns.TEMPERATURE, Columns.RAINFALL]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
@@ -77,11 +78,11 @@ class Weather(Component):
         self.randomness = builder.randomness.get_stream(self.name)
 
         self.get_temperature = builder.value.register_value_producer(
-            "temperature", self.temperature_source
+            Pipelines.TEMPERATURE, self.temperature_source
         )
 
         self.get_rainfall = builder.value.register_value_producer(
-            "rainfall", self.rainfall_source
+            Pipelines.RAINFALL, self.rainfall_source
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:

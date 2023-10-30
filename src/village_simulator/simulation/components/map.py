@@ -6,9 +6,7 @@ from vivarium import Component
 from vivarium.framework.engine import Builder
 from vivarium.framework.population import SimulantData
 
-X = "x"
-Y = "y"
-TERRAIN = "terrain"
+from village_simulator.constants import Columns
 
 
 class Map(Component):
@@ -17,7 +15,7 @@ class Map(Component):
     CONFIGURATION_DEFAULTS = {
         "map": {
             # fixme this must have the same area as the population size
-            "dimensions": {"x": 8, "y": 5}
+            "dimensions": {Columns.X: 8, Columns.Y: 5}
         }
     }
 
@@ -27,7 +25,7 @@ class Map(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [X, Y, TERRAIN]
+        return [Columns.X, Columns.Y, Columns.TERRAIN]
 
     #####################
     # Lifecycle methods #
@@ -43,7 +41,7 @@ class Map(Component):
         width = self.configuration.dimensions.x
         height = self.configuration.dimensions.y
         coordinates = pd.DataFrame(
-            itertools.product(range(width), range(height)), columns=[X, Y]
+            itertools.product(range(width), range(height)), columns=[Columns.X, Columns.Y]
         )
 
         self.register_simulants(coordinates[self.key_columns])
@@ -53,5 +51,5 @@ class Map(Component):
             pop_data.index,
             ["grassland", "desert", "forest", "mountain"],
             additional_key="initialize_terrain",
-        ).rename(TERRAIN)
+        ).rename(Columns.TERRAIN)
         self.population_view.update(terrain)

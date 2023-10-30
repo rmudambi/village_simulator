@@ -7,7 +7,7 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.village import IS_VILLAGE
+from village_simulator.constants import Columns, Pipelines
 
 
 class Resource(Component):
@@ -33,23 +33,23 @@ class Resource(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [self.resource_stores]
+        return [self._stores_column]
 
     @property
     def columns_required(self) -> Optional[List[str]]:
-        return [IS_VILLAGE]
+        return [Columns.IS_VILLAGE]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
         return {
-            "requires_columns": [IS_VILLAGE],
-            "requires_values": ["total_population"],
+            "requires_columns": [Columns.IS_VILLAGE],
+            "requires_values": [Pipelines.TOTAL_POPULATION],
             "requires_streams": [self.name],
         }
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{IS_VILLAGE} == True"
+        return f"{Columns.IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #
@@ -58,15 +58,17 @@ class Resource(Component):
     def __init__(self, resource: str):
         super().__init__()
         self.resource = resource
-        self.resource_stores = f"{self.resource}_stores"
+        self._stores_column = Columns.get_resource_stores(self.resource)
+        self._consumption_pipeline = Pipelines.get_resource_consumption(self.resource)
+        self._accumulation_pipeline = Pipelines.get_resource_accumulation(self.resource)
 
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration[self.resource]
         self.randomness = builder.randomness.get_stream(self.name)
-        self.total_population = builder.value.get_value("total_population")
+        self.total_population = builder.value.get_value(Pipelines.TOTAL_POPULATION)
 
-        self.consumption = self.register_consumption(builder)
-        self.accumulation = self.register_accumulation(builder)
+        self.get_consumption = self.register_consumption(builder)
+        self.get_accumulation = self.register_accumulation(builder)
 
     #################
     # Setup methods #
@@ -74,17 +76,17 @@ class Resource(Component):
 
     def register_accumulation(self, builder):
         return builder.value.register_rate_producer(
-            f"{self.resource}.accumulation",
-            self.get_accumulation_rate_source,
-            requires_values=["total_population"],
+            self._accumulation_pipeline,
+            self.accumulation_rate_source,
+            requires_values=[Pipelines.TOTAL_POPULATION],
             requires_streams=[self.name],
         )
 
     def register_consumption(self, builder):
         return builder.value.register_rate_producer(
-            f"{self.resource}.consumption",
-            self.get_consumption_rate_source,
-            requires_values=["total_population"],
+            self._consumption_pipeline,
+            self.consumption_rate_source,
+            requires_values=[Pipelines.TOTAL_POPULATION],
             requires_streams=[self.name],
         )
 
@@ -99,9 +101,9 @@ class Resource(Component):
         :param pop_data:
         :return:
         """
-        is_village = self.population_view.subview([IS_VILLAGE]).get(pop_data.index)
+        is_village = self.population_view.subview([Columns.IS_VILLAGE]).get(pop_data.index)
         village_index = is_village[is_village].index
-        stores = pd.Series(0.0, index=pop_data.index, name=self.resource_stores)
+        stores = pd.Series(0.0, index=pop_data.index, name=self._stores_column)
 
         stores[village_index] = self.total_population(
             village_index
@@ -121,16 +123,16 @@ class Resource(Component):
         :param event:
         :return:
         """
-        resource = self.population_view.get(event.index)[self.resource_stores]
-        resource -= self.consumption(resource.index)
-        resource += self.accumulation(resource.index)
+        resource = self.population_view.get(event.index)[self._stores_column]
+        resource -= self.get_consumption(resource.index)
+        resource += self.get_accumulation(resource.index)
         self.population_view.update(resource)
 
     ####################
     # Pipeline sources #
     ####################
 
-    def get_accumulation_rate_source(self, index: pd.Index) -> pd.Series:
+    def accumulation_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which the resource is accumulated by each village.
 
@@ -148,7 +150,7 @@ class Resource(Component):
         )
         return self.get_total_from_per_capita(accumulation_per_capita)
 
-    def get_consumption_rate_source(self, index: pd.Index) -> pd.Series:
+    def consumption_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which the resource is consumed by each village.
 

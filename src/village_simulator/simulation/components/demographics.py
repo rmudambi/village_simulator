@@ -7,11 +7,8 @@ from vivarium.framework.engine import Builder
 from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
-from village_simulator.simulation.components.village import ARABLE_LAND, IS_VILLAGE
+from village_simulator.constants import Columns, Pipelines
 from village_simulator.simulation.utilities import round_stochastic
-
-FEMALE_POPULATION_SIZE = "female_population_size"
-MALE_POPULATION_SIZE = "male_population_size"
 
 
 class Demographics(Component):
@@ -34,22 +31,22 @@ class Demographics(Component):
 
     @property
     def columns_created(self) -> List[str]:
-        return [FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE]
+        return [Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE]
 
     @property
     def columns_required(self) -> List[str]:
-        return [IS_VILLAGE, ARABLE_LAND]
+        return [Columns.IS_VILLAGE, Columns.ARABLE_LAND]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
         return {
-            "requires_columns": [IS_VILLAGE, ARABLE_LAND],
+            "requires_columns": [Columns.IS_VILLAGE, Columns.ARABLE_LAND],
             "requires_streams": [self.name],
         }
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{IS_VILLAGE} == True"
+        return f"{Columns.IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #
@@ -58,16 +55,16 @@ class Demographics(Component):
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration.demographics
         self.randomness = builder.randomness.get_stream(self.name)
-        self.fertility_rate = builder.value.register_rate_producer(
-            "fertility_rate", self.get_fertility_rate, requires_streams=[self.name]
+        self.get_fertility_rate = builder.value.register_rate_producer(
+            Pipelines.FERTILITY_RATE, self.fertility_rate_source, requires_streams=[self.name]
         )
-        self.mortality_rate = builder.value.register_rate_producer(
-            "mortality_rate", self.get_mortality_rate, requires_streams=[self.name]
+        self.get_mortality_rate = builder.value.register_rate_producer(
+            Pipelines.MORTALITY_RATE, self.mortality_rate_source, requires_streams=[self.name]
         )
-        self.total_population = builder.value.register_value_producer(
-            "total_population",
-            self.get_total_population,
-            requires_columns=[FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE],
+        self.get_total_population = builder.value.register_value_producer(
+            Pipelines.TOTAL_POPULATION,
+            self.total_population_source,
+            requires_columns=[Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE],
         )
 
     ########################
@@ -75,16 +72,15 @@ class Demographics(Component):
     ########################
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
-        state = self.population_view.subview([ARABLE_LAND]).get(pop_data.index)
-        female_village_size = pd.Series(0, index=pop_data.index, name=FEMALE_POPULATION_SIZE)
-        male_village_size = pd.Series(0, index=pop_data.index, name=MALE_POPULATION_SIZE)
+        state = self.population_view.subview([Columns.ARABLE_LAND]).get(pop_data.index)
+        village_size = pd.DataFrame(0, index=pop_data.index, columns=[Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE])
 
-        village_size = state[ARABLE_LAND] * self.randomness.sample_from_distribution(
+        total_village_size = self.randomness.sample_from_distribution(
             state.index,
             distribution=stats.norm,
             additional_key="initial_village_size",
             **self.configuration.initial_village_size.to_dict(),
-        )
+        ) * state[Columns.ARABLE_LAND]
 
         sex_ratio = self.randomness.sample_from_distribution(
             state.index,
@@ -93,28 +89,26 @@ class Demographics(Component):
             **self.configuration.initial_sex_ratio.to_dict(),
         )
 
-        female_village_size[state.index] = round_stochastic(
-            village_size * sex_ratio / 2.0, self.randomness, "initial_female_village_size"
+        village_size.loc[state.index, Columns.FEMALE_POPULATION_SIZE] = round_stochastic(
+            total_village_size * sex_ratio / 2.0, self.randomness, "initial_female_village_size"
         )
-        male_village_size[state.index] = round_stochastic(
-            village_size * (1.0 - sex_ratio / 2.0),
+        village_size.loc[state.index, Columns.MALE_POPULATION_SIZE] = round_stochastic(
+            total_village_size * (1.0 - sex_ratio / 2.0),
             self.randomness,
             "initial_male_village_size",
         )
 
-        self.population_view.update(
-            pd.concat([female_village_size, male_village_size], axis=1)
-        )
+        self.population_view.update(village_size)
 
     def on_time_step(self, event: Event) -> None:
         villages = self.population_view.get(event.index)[
-            [FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE]
+            [Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE]
         ]
 
-        fertility_rate = self.fertility_rate(villages.index)
-        births = fertility_rate.mul(villages[FEMALE_POPULATION_SIZE], axis=0)
+        fertility_rate = self.get_fertility_rate(villages.index)
+        births = fertility_rate.mul(villages[Columns.FEMALE_POPULATION_SIZE], axis=0)
 
-        mortality_rate = self.mortality_rate(villages.index)
+        mortality_rate = self.get_mortality_rate(villages.index)
         deaths = mortality_rate * villages
         villages += births - deaths
 
@@ -125,39 +119,49 @@ class Demographics(Component):
     # Pipeline sources #
     ####################
 
-    def get_fertility_rate(self, index: pd.Index) -> pd.DataFrame:
+    def fertility_rate_source(self, index: pd.Index) -> pd.DataFrame:
+        """
+        Get the sex-specific fertility rate for the population in the given
+        index.
+
+        :param index:
+        :return:
+        """
+        # FIXME: The names of the columns of the returned DataFrame are just the
+        #  names of the respective sex-specific population size columns. This is
+        #  confusing and will likely lead to bugs in the future if not fixed.
         female_fertility_rate = self.randomness.sample_from_distribution(
             index,
             distribution=stats.norm,
             additional_key="female_fertility",
             **self.configuration.fertility_rate.to_dict(),
-        ).rename(FEMALE_POPULATION_SIZE)
+        ).rename(Columns.FEMALE_POPULATION_SIZE)
 
         male_fertility_rate = self.randomness.sample_from_distribution(
             index,
             distribution=stats.norm,
             additional_key="male_fertility",
             **self.configuration.fertility_rate.to_dict(),
-        ).rename(MALE_POPULATION_SIZE)
+        ).rename(Columns.MALE_POPULATION_SIZE)
         return pd.concat([female_fertility_rate, male_fertility_rate], axis=1)
 
-    def get_mortality_rate(self, index: pd.Index) -> pd.DataFrame:
+    def mortality_rate_source(self, index: pd.Index) -> pd.DataFrame:
         female_mortality_rate = self.randomness.sample_from_distribution(
             index,
             distribution=stats.norm,
             additional_key="female_mortality",
             **self.configuration.mortality_rate.to_dict(),
-        ).rename(FEMALE_POPULATION_SIZE)
+        ).rename(Columns.FEMALE_POPULATION_SIZE)
         male_mortality_rate = self.randomness.sample_from_distribution(
             index,
             distribution=stats.norm,
             additional_key="male_mortality",
             **self.configuration.mortality_rate.to_dict(),
-        ).rename(MALE_POPULATION_SIZE)
+        ).rename(Columns.MALE_POPULATION_SIZE)
         return pd.concat([female_mortality_rate, male_mortality_rate], axis=1)
 
-    def get_total_population(self, index: pd.Index) -> pd.Series:
+    def total_population_source(self, index: pd.Index) -> pd.Series:
         population = self.population_view.get(index)[
-            [FEMALE_POPULATION_SIZE, MALE_POPULATION_SIZE]
+            [Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE]
         ]
-        return population.sum(axis=1).rename("total_population")
+        return population.sum(axis=1)

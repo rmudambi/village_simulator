@@ -2,7 +2,7 @@ import click
 from rich.console import Console
 from vivarium import InteractiveContext
 
-from village_simulator import paths
+from village_simulator.constants import paths
 from village_simulator.interface import actions
 from village_simulator.interface.utilities import make_bold, get_date_text
 

@@ -1,6 +1,6 @@
 from vivarium import InteractiveContext
 
-from village_simulator import paths
+from village_simulator.constants import paths
 
 
 def test_simulation():

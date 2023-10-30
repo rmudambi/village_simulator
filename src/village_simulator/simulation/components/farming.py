@@ -11,9 +11,9 @@ from vivarium.framework.population import SimulantData
 from vivarium.framework.time import get_time_stamp
 from vivarium.framework.utilities import from_yearly
 
-from village_simulator.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
+from village_simulator.constants import Columns, Pipelines
+from village_simulator.constants.paths import EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD
 from village_simulator.simulation.components.resources import Resource
-from village_simulator.simulation.components.village import ARABLE_LAND, IS_VILLAGE
 from village_simulator.simulation.constants import ONE_YEAR
 from village_simulator.simulation.utilities import get_next_annual_event_date
 
@@ -43,16 +43,16 @@ class Wheat(Resource):
 
     @property
     def columns_created(self) -> List[str]:
-        return super().columns_created + [self.projected_yield_column]
+        return super().columns_created + [Columns.PROJECTED_WHEAT_HARVEST]
 
     @property
     def columns_required(self) -> Optional[List[str]]:
-        return super().columns_required + [ARABLE_LAND]
+        return super().columns_required + [Columns.ARABLE_LAND]
 
     @property
     def initialization_requirements(self) -> Dict[str, List[str]]:
         requirements = super().initialization_requirements
-        requirements["requires_columns"] += [ARABLE_LAND]
+        requirements["requires_columns"] += [Columns.ARABLE_LAND]
         return requirements
 
     #####################
@@ -61,7 +61,6 @@ class Wheat(Resource):
 
     def __init__(self):
         super().__init__("wheat")
-        self.projected_yield_column = f"{self.resource}_projected_yield"
 
     def setup(self, builder: Builder) -> None:
         super().setup(builder)
@@ -81,36 +80,31 @@ class Wheat(Resource):
             self.configuration.harvest_date.day,
         )
 
-        self.projected_yield_pipeline = builder.value.register_value_producer(
-            f"{self.resource}.projected_yield",
-            self.get_projected_yield,
-            requires_columns=[self.projected_yield_column],
+        self.get_projected_yield = builder.value.register_value_producer(
+            Pipelines.PROJECTED_WHEAT_HARVEST,
+            self.projected_yield_source,
+            requires_columns=[Columns.PROJECTED_WHEAT_HARVEST],
         )
 
-        self.effect_of_temperature_on_yield = builder.lookup.build_table(
-            pd.read_csv(EFFECT_OF_TEMPERATURE_ON_WHEAT_YIELD),
-            parameter_columns=["temperature"],
-        )
-
-        self.get_total_population = builder.value.get_value("total_population")
+        self.get_total_population = builder.value.get_value(Pipelines.TOTAL_POPULATION)
 
         builder.value.register_value_modifier(
-            "mortality_rate",
+            Pipelines.MORTALITY_RATE,
             self.modify_mortality_rate,
-            requires_values=["total_population", f"{self.resource}.consumption"],
+            requires_values=[Pipelines.TOTAL_POPULATION, self.get_consumption.name],
             requires_streams=[self.name],
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         super().on_initialize_simulants(pop_data)
 
-        arable_land = self.population_view.subview([ARABLE_LAND]).get(pop_data.index)
+        arable_land = self.population_view.subview([Columns.ARABLE_LAND]).get(pop_data.index)
 
         init_data = pd.DataFrame(
-            0.0, columns=[self.projected_yield_column], index=pop_data.index
+            0.0, columns=[Columns.PROJECTED_WHEAT_HARVEST], index=pop_data.index
         )
         init_data.loc[
-            arable_land.index, self.projected_yield_column
+            arable_land.index, Columns.PROJECTED_WHEAT_HARVEST
         ] = self.initialize_projected_yield(arable_land.squeeze(axis=1))
 
         self.population_view.update(init_data)
@@ -122,8 +116,8 @@ class Wheat(Resource):
         # if next harvest date is less than the next sowing date, update projected yield
         if self.next_harvest_date < self.next_sowing_date:
             index = self.population_view.get(event.index).index
-            projected_yield = self.projected_yield_pipeline(index).rename(
-                self.projected_yield_column
+            projected_yield = self.get_projected_yield(index).rename(
+                Columns.PROJECTED_WHEAT_HARVEST
             )
             self.population_view.update(projected_yield)
 
@@ -144,7 +138,7 @@ class Wheat(Resource):
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
             self.next_harvest_date += ONE_YEAR
 
-            arable_land = self.population_view.get(event.index)[ARABLE_LAND]
+            arable_land = self.population_view.get(event.index)[Columns.ARABLE_LAND]
             projected_yield = self.initialize_projected_yield(arable_land)
             self.population_view.update(projected_yield)
 
@@ -154,17 +148,17 @@ class Wheat(Resource):
 
     def register_accumulation(self, builder):
         return builder.value.register_value_producer(
-            f"{self.resource}.accumulation",
-            self.get_harvest_quantity_source,
-            requires_values=["total_population"],
+            self._accumulation_pipeline,
+            self.harvest_quantity_source,
+            requires_values=[Pipelines.TOTAL_POPULATION],
             requires_streams=[self.name],
         )
 
     def register_consumption(self, builder):
         return builder.value.register_value_producer(
-            f"{self.resource}.consumption",
-            self.get_consumption_rate_source,
-            requires_values=["total_population"],
+            self._consumption_pipeline,
+            self.consumption_rate_source,
+            requires_values=[Pipelines.TOTAL_POPULATION],
             requires_streams=[self.name],
         )
 
@@ -172,7 +166,7 @@ class Wheat(Resource):
     # Pipeline sources #
     ####################
 
-    def get_harvest_quantity_source(self, index: pd.Index) -> pd.Series:
+    def harvest_quantity_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the total amount of food accumulated during this time-step.
 
@@ -183,15 +177,13 @@ class Wheat(Resource):
         """
         clock_time = self.clock()
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
-            harvest_quantity = self.population_view.get(index)[self.projected_yield_column]
+            harvest_quantity = self.population_view.get(index)[Columns.PROJECTED_WHEAT_HARVEST]
         else:
-            harvest_quantity = pd.Series(
-                0.0, index=index, name=f"{self.resource}.accumulation"
-            )
+            harvest_quantity = pd.Series(0.0, index=index)
 
         return harvest_quantity
 
-    def get_consumption_rate_source(self, index: pd.Index) -> pd.Series:
+    def consumption_rate_source(self, index: pd.Index) -> pd.Series:
         """
         Gets the rate at which wheat is consumed by each village.
 
@@ -201,7 +193,7 @@ class Wheat(Resource):
         :param index:
         :return:
         """
-        wheat_stores = self.population_view.get(index)[self.resource_stores]
+        wheat_stores = self.population_view.get(index)[self._stores_column]
         steps_to_next_harvest = (self.next_harvest_date - self.clock()) / self.step_size()
         store_depletion_rate = wheat_stores / steps_to_next_harvest
 
@@ -212,9 +204,9 @@ class Wheat(Resource):
         ).min(axis=1)
         return consumption_rate
 
-    def get_projected_yield(self, index: pd.Index) -> pd.Series:
+    def projected_yield_source(self, index: pd.Index) -> pd.Series:
         """Gets the projected yield of wheat for each village."""
-        return self.population_view.get(index)[self.projected_yield_column]
+        return self.population_view.get(index)[Columns.PROJECTED_WHEAT_HARVEST]
 
     ######################
     # Pipeline modifiers #
@@ -229,7 +221,7 @@ class Wheat(Resource):
         :return:
         """
         natural_consumption = self.get_natural_consumption_rate(index)
-        actual_consumption = self.consumption(index)
+        actual_consumption = self.get_consumption(index)
         effect = (natural_consumption / actual_consumption) ** 10
         mortality_rate = target.mul(effect, axis=0)
 
@@ -262,7 +254,7 @@ class Wheat(Resource):
             additional_key="projected_yield",
             **self.configuration.land_productivity.to_dict(),
         )
-        return projected_yield.rename(self.projected_yield_column)
+        return projected_yield.rename(Columns.PROJECTED_WHEAT_HARVEST)
 
     def get_natural_consumption_rate(self, index: pd.Index) -> pd.Series:
         natural_consumption_rate = from_yearly(
@@ -290,15 +282,14 @@ class TemperatureEffect(Component):
     def __init__(self, target: str):
         super().__init__()
         self.target = target
-        self.projected_yield_pipeline = f"{self.target}.projected_yield"
 
     def setup(self, builder: Builder) -> None:
         self.effect_of_temperature_on_yield = builder.lookup.build_table(
-            self._get_effect_data(), parameter_columns=["temperature"]
+            self._get_effect_data(), parameter_columns=[Columns.TEMPERATURE]
         )
 
         builder.value.register_value_modifier(
-            self.projected_yield_pipeline, self.modify_yield, requires_columns=["temperature"]
+            Pipelines.PROJECTED_WHEAT_HARVEST, self.modify_yield, requires_columns=[Columns.TEMPERATURE]
         )
 
     ######################
@@ -392,19 +383,19 @@ class RainfallEffectOnWheat(Component):
     @property
     def columns_created(self) -> List[str]:
         return [
-            self.previously_dry_column,
-            self.cumulative_dry_days_column,
-            self.rainfall_mid_growth_column,
-            self.rainfall_late_growth_column,
+            Columns.PREVIOUSLY_DRY,
+            Columns.CUMULATIVE_DRY_DAYS,
+            Columns.RAINFALL_MID_GROWTH,
+            Columns.RAINFALL_LATE_GROWTH,
         ]
 
     @property
     def columns_required(self) -> Optional[List[str]]:
-        return ["rainfall"]
+        return [Columns.RAINFALL]
 
     @property
     def population_view_query(self) -> Optional[str]:
-        return f"{IS_VILLAGE} == True"
+        return f"{Columns.IS_VILLAGE} == True"
 
     #####################
     # Lifecycle methods #
@@ -413,12 +404,11 @@ class RainfallEffectOnWheat(Component):
     def __init__(self):
         super().__init__()
         self.target = "wheat"
-        self.previously_dry_column = "previous_day_dry"
-        self.cumulative_dry_days_column = "cumulative_dry_days"
-        self.rainfall_mid_growth_column = "rainfall_mid_growth"
-        self.rainfall_late_growth_column = "rainfall_late_growth"
-
-        self.projected_yield_pipeline = f"{self.target}.projected_yield"
+        self._cumulative_rainfall_columns = [
+            Columns.CUMULATIVE_DRY_DAYS,
+            Columns.RAINFALL_MID_GROWTH,
+            Columns.RAINFALL_LATE_GROWTH,
+        ]
 
     def setup(self, builder: Builder) -> None:
         self.configuration = builder.configuration.effect_of_rainfall_on_wheat
@@ -445,18 +435,15 @@ class RainfallEffectOnWheat(Component):
         )
 
         builder.value.register_value_modifier(
-            self.projected_yield_pipeline, self.modify_yield, requires_columns=["temperature"]
+            Pipelines.PROJECTED_WHEAT_HARVEST, self.modify_yield, requires_columns=[Columns.TEMPERATURE]
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
-        initialization_data = {
-            self.previously_dry_column: False,
-            self.cumulative_dry_days_column: 0.0,
-            self.rainfall_mid_growth_column: 0.0,
-            self.rainfall_late_growth_column: 0.0,
-        }
-        created_columns = pd.DataFrame(initialization_data, index=pop_data.index)
-        self.population_view.update(created_columns)
+        initialization_data = pd.DataFrame(
+            0.0, index=pop_data.index, columns=self._cumulative_rainfall_columns
+        )
+        initialization_data[Columns.PREVIOUSLY_DRY] = False
+        self.population_view.update(initialization_data)
 
     def on_time_step_prepare(self, event: Event) -> None:
         """Track rainfall metrics that affect wheat"""
@@ -464,17 +451,17 @@ class RainfallEffectOnWheat(Component):
         if self.next_harvest_date < self.next_sowing_date:
             data = self.population_view.get(event.index)
 
-            cumulatively_dry = data[self.previously_dry_column] & (data["rainfall"] == 0.0)
-            data[self.cumulative_dry_days_column] += cumulatively_dry
-            updates = pd.DataFrame(data[self.cumulative_dry_days_column])
+            cumulatively_dry = data[Columns.PREVIOUSLY_DRY] & (data[Columns.RAINFALL] == 0.0)
+            data[Columns.CUMULATIVE_DRY_DAYS] += cumulatively_dry
+            updates = pd.DataFrame(data[Columns.CUMULATIVE_DRY_DAYS])
 
             if event.time > self.next_harvest_date - pd.Timedelta(days=90):
-                updates[self.rainfall_late_growth_column] = (
-                    data[self.rainfall_late_growth_column] + data["rainfall"]
+                updates[Columns.RAINFALL_LATE_GROWTH] = (
+                    data[Columns.RAINFALL_LATE_GROWTH] + data[Columns.RAINFALL]
                 )
             elif event.time > self.next_harvest_date - pd.Timedelta(days=180):
-                updates[self.rainfall_mid_growth_column] = (
-                    data[self.rainfall_mid_growth_column] + data["rainfall"]
+                updates[Columns.RAINFALL_MID_GROWTH] = (
+                    data[Columns.RAINFALL_MID_GROWTH] + data[Columns.RAINFALL]
                 )
 
             self.population_view.update(updates)
@@ -487,8 +474,8 @@ class RainfallEffectOnWheat(Component):
         this time-step.
         """
 
-        rainfall = self.population_view.get(event.index)["rainfall"]
-        updates = pd.DataFrame({self.previously_dry_column: rainfall == 0.0})
+        rainfall = self.population_view.get(event.index)[Columns.RAINFALL]
+        updates = pd.DataFrame({Columns.PREVIOUSLY_DRY: rainfall == 0.0})
 
         # todo get this information from the wheat component
         if event.time - self.step_size() < self.next_sowing_date <= event.time:
@@ -497,13 +484,7 @@ class RainfallEffectOnWheat(Component):
         if event.time - self.step_size() < self.next_harvest_date <= event.time:
             # todo get this information from the wheat component
             self.next_harvest_date += ONE_YEAR
-            updates[
-                [
-                    self.cumulative_dry_days_column,
-                    self.rainfall_mid_growth_column,
-                    self.rainfall_late_growth_column,
-                ]
-            ] = 0.0
+            updates[self._cumulative_rainfall_columns] = 0.0
 
         self.population_view.update(updates)
 
@@ -517,18 +498,18 @@ class RainfallEffectOnWheat(Component):
         event_time = self.clock() + self.step_size()
 
         if clock_time < self.next_harvest_date - pd.Timedelta(days=90) <= event_time:
-            rainfall = self.population_view.get(index)[self.rainfall_mid_growth_column]
+            rainfall = self.population_view.get(index)[Columns.RAINFALL_MID_GROWTH]
             effect = self.mid_growth.get_effect(rainfall)
 
         elif clock_time < self.next_harvest_date <= event_time:
             data = self.population_view.get(index)[
-                [self.cumulative_dry_days_column, self.rainfall_late_growth_column]
+                [Columns.CUMULATIVE_DRY_DAYS, Columns.RAINFALL_LATE_GROWTH]
             ]
             cumulative_dry_days_effect = self.cumulative_dry_days.get_effect(
-                data[self.cumulative_dry_days_column]
+                data[Columns.CUMULATIVE_DRY_DAYS]
             )
             rainfall_late_growth_effect = self.late_growth.get_effect(
-                data[self.rainfall_late_growth_column]
+                data[Columns.RAINFALL_LATE_GROWTH]
             )
             effect = cumulative_dry_days_effect * rainfall_late_growth_effect
         else:
