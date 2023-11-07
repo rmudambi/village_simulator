@@ -7,7 +7,6 @@ import pytest
 from village_simulator.simulation.distributions import (
     _format_distribution_parameters,
     stretched_truncnorm_ppf,
-    zero_inflated_gamma_ppf,
 )
 
 
@@ -24,10 +23,7 @@ def _kwargs_list_to_series(
     }
 
 
-SCALAR_DIST_PARAMS = [
-    (stretched_truncnorm_ppf, {"loc": 4.0, "scale": 1.0}),
-    (zero_inflated_gamma_ppf, {"p_zero": 0.6, "shape": 1.0, "scale": 1.0}),
-]
+SCALAR_DIST_PARAMS = [(stretched_truncnorm_ppf, {"loc": 4.0, "scale": 1.0})]
 
 
 @pytest.mark.parametrize("ppf, kwargs", SCALAR_DIST_PARAMS)
@@ -52,15 +48,6 @@ def test_ppf_quantiles_series_kwargs_scalar_returns_series(ppf, kwargs):
     [
         (stretched_truncnorm_ppf, {"loc": 1.0, "scale": 0.5}),
         (stretched_truncnorm_ppf, {"loc": np.array([[1.0], [5.0]])}),
-        (
-            zero_inflated_gamma_ppf,
-            {
-                "p_zero": np.array([[0.3], [0.1]]),
-                "shape": 1.0,
-                "scale": np.array([[1.0], [3.0]]),
-            },
-        ),
-        (zero_inflated_gamma_ppf, {"p_zero": 0.1, "shape": 1.0, "scale": 3.0}),
     ],
 )
 def test_ppf_quantiles_series_returns_same_dimension_series(ppf, kwargs):
@@ -79,10 +66,6 @@ def test_ppf_quantiles_series_returns_same_dimension_series(ppf, kwargs):
     "ppf, kwargs",
     [
         (stretched_truncnorm_ppf, {"loc": np.array([[1.0, 9.0, 5.0]])}),
-        (
-            zero_inflated_gamma_ppf,
-            {"p_zero": np.array([[0.3, 0.1, 0.9]]), "scale": np.array([[1.0, 3.0, 2.0]])},
-        ),
     ],
 )
 def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
@@ -98,7 +81,7 @@ def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
 
 
 @pytest.mark.parametrize(
-    "ppf, num_args", [(stretched_truncnorm_ppf, 2), (zero_inflated_gamma_ppf, 3)]
+    "ppf, num_args", [(stretched_truncnorm_ppf, 2)]
 )
 def test_ppf_calls_format_distribution_parameters(mocker, ppf, num_args):
     """Test that the function calls _format_distribution_parameters"""
@@ -165,45 +148,3 @@ def test_stretched_truncnorm_ppf_loc_some_zero_2d():
     actual = stretched_truncnorm_ppf(quantiles, loc=loc.values[None, :])
 
     assert actual.loc[:, loc[loc == 0.0].index].eq(0.0).all().all()
-
-
-################################
-# Test zero_inflated_gamma_ppf #
-################################
-
-
-def test_zero_inflated_gamma_ppf_returns_zero_scalar():
-    """Test that the function returns 0 when quantile is less than p_zero"""
-    assert zero_inflated_gamma_ppf(0.5, 0.5, 1.0, 1.0) == 0.0
-
-
-@pytest.mark.parametrize(
-    "p_zero, expected",
-    [
-        (0.5, pd.Series([True, False, True, False])),
-        (np.array([[0.4], [0.3], [0.1], [0.7]]), pd.Series([True, False, False, False])),
-    ],
-)
-def test_zero_inflated_gamma_ppf_returns_zero_quantiles_series(p_zero, expected):
-    """Test that the function returns 0 when quantile is less than p_zero"""
-    quantiles = pd.Series([0.01, 0.89, 0.3, 0.99])
-    actual = zero_inflated_gamma_ppf(quantiles, p_zero, 1.0, 1.0).eq(0.0)
-
-    pd.testing.assert_series_equal(actual, expected, check_names=False)
-
-
-def test_zero_inflated_gamma_ppf_returns_zero_2d():
-    """Test that the function returns 0 when quantile is less than p_zero"""
-    quantiles = pd.Series([0.01, 0.89, 0.3, 0.99])
-    p_zero = np.array([[0.5, 0.2, 0.9]])
-    expected = pd.DataFrame(
-        [
-            [True, True, True],
-            [False, False, True],
-            [True, False, True],
-            [False, False, False],
-        ]
-    )
-    actual = zero_inflated_gamma_ppf(quantiles, p_zero, 1.0, 1.0).eq(0.0)
-
-    pd.testing.assert_frame_equal(actual, expected, check_names=False)

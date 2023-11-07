@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from village_simulator.simulation.components.weather import (
     DRY_PROBABILITY,
@@ -10,10 +11,7 @@ from village_simulator.simulation.components.weather import (
     RAINFALL_SEASONALITY_MIN,
     RAINFALL_SEASONALITY_MIN_DATE,
 )
-from village_simulator.simulation.distributions import (
-    stretched_truncnorm_ppf,
-    zero_inflated_gamma_ppf,
-)
+from village_simulator.simulation.distributions import stretched_truncnorm_ppf
 from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
 
@@ -50,15 +48,18 @@ def sample_rainfall_in_period(
     aridity_factors_values = aridity_factors.values[:, None]
 
     # get zero_inflated_gamma_ppf parameters for each day in period
-    dry_probabilities = 1 - aridity_factors_values * (1 - DRY_PROBABILITY)
-    scale = aridity_factors_values * GAMMA_SCALE_PARAMETER
+    dry_probabilities = 1 - aridity_factors * (1 - DRY_PROBABILITY)
+    scale = aridity_factors * GAMMA_SCALE_PARAMETER
 
     # sample large number of observations for each day in period
-    regional_rainfall = zero_inflated_gamma_ppf(
-        pd.Series(np.random.rand(len(aridity_factors)), index=aridity_factors.index),
-        p_zero=dry_probabilities,
-        shape=GAMMA_SHAPE_PARAMETER,
-        scale=scale,
+    is_dry_propensity = pd.Series(np.random.rand(len(aridity_factors)), index=aridity_factors.index)
+    not_dry_index = dry_probabilities[dry_probabilities >= is_dry_propensity].index
+
+    regional_rainfall = pd.Series(0.0, index=aridity_factors.index)
+    regional_rainfall.loc[not_dry_index] = stats.gamma.ppf(
+        pd.Series(np.random.rand(len(not_dry_index)), index=not_dry_index),
+        a=GAMMA_SHAPE_PARAMETER,
+        scale=scale[not_dry_index],
     )
 
     expected_rainfall = pd.DataFrame(

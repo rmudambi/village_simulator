@@ -5,58 +5,6 @@ import pandas as pd
 from scipy import stats
 
 
-def zero_inflated_gamma_ppf(
-    quantiles: Union[float, pd.Series],
-    p_zero: Union[float, np.ndarray] = 0.0,
-    shape: Union[float, np.ndarray] = 1.0,
-    scale: Union[float, np.ndarray] = 1.0,
-) -> Union[float, pd.Series, pd.DataFrame]:
-    """
-    Return the inverse of the cumulative distribution function of a zero-inflated
-    gamma distribution.
-
-    The distribution is defined to have a probability of `p_zero` of being 0 and
-    a probability of `1 - p_zero` of being distributed according to a gamma
-    distribution with shape `shape` and scale `scale`.
-
-    This function can either take a single value or a Series for the `quantiles`
-    parameter. If a column vector is passed to any of the other parameters, it
-    must have the same length as `quantiles`. The dimensions of the output will
-    be the product of the dimensions of `quantiles` and the other parameters.
-    The resulting value will be squeezed to remove any dimensions of size 1.
-
-    Parameters
-    ----------
-    quantiles
-        The quantiles at which to compute the inverse of the cumulative
-        distribution function.
-    p_zero
-        The probability of the distribution being 0.
-    shape
-        The shape parameter of the gamma distribution.
-    scale
-        The scale parameter of the gamma distribution.
-
-    Returns
-    -------
-    The inverse of the cumulative distribution function of a zero-inflated gamma
-    distribution.
-    """
-
-    quantiles, p_zero, shape, scale = _format_distribution_parameters(
-        quantiles, p_zero, shape, scale
-    )
-
-    quantiles_values = quantiles.values[:, None]
-
-    non_zero = quantiles_values > p_zero
-    values = stats.gamma.ppf(quantiles_values, a=shape, scale=scale)
-    values = np.where(non_zero, values, 0.0)
-
-    samples = pd.DataFrame(values, index=quantiles.index)
-    return samples.squeeze()
-
-
 def stretched_truncnorm_ppf(
     quantiles: Union[float, pd.Series],
     loc: Union[float, np.ndarray] = 1.0,

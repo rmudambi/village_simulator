@@ -9,10 +9,7 @@ from vivarium.framework.event import Event
 from vivarium.framework.population import SimulantData
 
 from village_simulator.constants import Columns, Pipelines
-from village_simulator.simulation.distributions import (
-    stretched_truncnorm_ppf,
-    zero_inflated_gamma_ppf,
-)
+from village_simulator.simulation.distributions import stretched_truncnorm_ppf
 from village_simulator.simulation.utilities import get_value_from_annual_cycle
 
 RAINFALL_SEASONALITY_MIN = 0.1
@@ -137,14 +134,21 @@ class Weather(Component):
             min_date=config.seasonality.min_date,
         )
         dry_probability = 1 - aridity_factor * (1 - config.dry_probability)
+        is_dry_propensity = self.randomness.get_draw(
+            pd.Index([0]),
+            additional_key="is_dry",
+        )[0]
+
+        if is_dry_propensity < dry_probability:
+            return pd.Series(0.0, index=event.index)
+
         scale = aridity_factor * config.gamma_scale_parameter
 
         regional_rainfall = self.randomness.sample_from_distribution(
             pd.Index([0]),
-            ppf=zero_inflated_gamma_ppf,
+            distribution=stats.gamma,
             additional_key="regional_rainfall",
-            p_zero=dry_probability,
-            shape=config.gamma_shape_parameter,
+            a=config.gamma_shape_parameter,
             scale=scale,
         )[0]
 
