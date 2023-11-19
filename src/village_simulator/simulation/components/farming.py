@@ -177,7 +177,9 @@ class Wheat(Resource):
         """
         clock_time = self.clock()
         if clock_time < self.next_harvest_date <= clock_time + self.step_size():
-            harvest_quantity = self.population_view.get(index)[Columns.PROJECTED_WHEAT_HARVEST]
+            harvest_quantity = self.population_view.get(index)[
+                Columns.PROJECTED_WHEAT_HARVEST
+            ]
         else:
             harvest_quantity = pd.Series(0.0, index=index)
 
@@ -289,7 +291,9 @@ class TemperatureEffect(Component):
         )
 
         builder.value.register_value_modifier(
-            Pipelines.PROJECTED_WHEAT_HARVEST, self.modify_yield, requires_columns=[Columns.TEMPERATURE]
+            Pipelines.PROJECTED_WHEAT_HARVEST,
+            self.modify_yield,
+            requires_columns=[Columns.TEMPERATURE],
         )
 
     ######################
@@ -435,7 +439,9 @@ class RainfallEffectOnWheat(Component):
         )
 
         builder.value.register_value_modifier(
-            Pipelines.PROJECTED_WHEAT_HARVEST, self.modify_yield, requires_columns=[Columns.TEMPERATURE]
+            Pipelines.PROJECTED_WHEAT_HARVEST,
+            self.modify_yield,
+            requires_columns=[Columns.TEMPERATURE],
         )
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:

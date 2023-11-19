@@ -73,14 +73,21 @@ class Demographics(Component):
 
     def on_initialize_simulants(self, pop_data: SimulantData) -> None:
         state = self.population_view.subview([Columns.ARABLE_LAND]).get(pop_data.index)
-        village_size = pd.DataFrame(0, index=pop_data.index, columns=[Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE])
+        village_size = pd.DataFrame(
+            0,
+            index=pop_data.index,
+            columns=[Columns.FEMALE_POPULATION_SIZE, Columns.MALE_POPULATION_SIZE],
+        )
 
-        total_village_size = self.randomness.sample_from_distribution(
-            state.index,
-            distribution=stats.norm,
-            additional_key="initial_village_size",
-            **self.configuration.initial_village_size.to_dict(),
-        ) * state[Columns.ARABLE_LAND]
+        total_village_size = (
+            self.randomness.sample_from_distribution(
+                state.index,
+                distribution=stats.norm,
+                additional_key="initial_village_size",
+                **self.configuration.initial_village_size.to_dict(),
+            )
+            * state[Columns.ARABLE_LAND]
+        )
 
         sex_ratio = self.randomness.sample_from_distribution(
             state.index,
@@ -90,7 +97,9 @@ class Demographics(Component):
         )
 
         village_size.loc[state.index, Columns.FEMALE_POPULATION_SIZE] = round_stochastic(
-            total_village_size * sex_ratio / 2.0, self.randomness, "initial_female_village_size"
+            total_village_size * sex_ratio / 2.0,
+            self.randomness,
+            "initial_female_village_size",
         )
         village_size.loc[state.index, Columns.MALE_POPULATION_SIZE] = round_stochastic(
             total_village_size * (1.0 - sex_ratio / 2.0),

@@ -80,9 +80,7 @@ def test_ppf_quantiles_series_kwargs_same_dimension_series(ppf, kwargs):
     assert actual.shape == (2, 3)
 
 
-@pytest.mark.parametrize(
-    "ppf, num_args", [(stretched_truncnorm_ppf, 2)]
-)
+@pytest.mark.parametrize("ppf, num_args", [(stretched_truncnorm_ppf, 2)])
 def test_ppf_calls_format_distribution_parameters(mocker, ppf, num_args):
     """Test that the function calls _format_distribution_parameters"""
     mock = mocker.patch(

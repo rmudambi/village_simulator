@@ -52,7 +52,9 @@ def sample_rainfall_in_period(
     scale = aridity_factors * GAMMA_SCALE_PARAMETER
 
     # sample large number of observations for each day in period
-    is_dry_propensity = pd.Series(np.random.rand(len(aridity_factors)), index=aridity_factors.index)
+    is_dry_propensity = pd.Series(
+        np.random.rand(len(aridity_factors)), index=aridity_factors.index
+    )
     not_dry_index = dry_probabilities[dry_probabilities >= is_dry_propensity].index
 
     regional_rainfall = pd.Series(0.0, index=aridity_factors.index)

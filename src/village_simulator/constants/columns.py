@@ -1,5 +1,4 @@
 class Columns:
-
     # Map columns
     X: str = "x"
     Y: str = "y"

@@ -4,7 +4,7 @@ from vivarium import InteractiveContext
 
 from village_simulator.constants import paths
 from village_simulator.interface import actions
-from village_simulator.interface.utilities import make_bold, get_date_text
+from village_simulator.interface.utilities import get_date_text, make_bold
 
 
 @click.group()
