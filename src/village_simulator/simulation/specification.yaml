@@ -29,7 +29,7 @@ configuration:
             day: 1
         step_size: 1  # Days
     population:
-        population_size: 40
+        population_size: 64
 
     wood:
         initial_per_capita_stores:

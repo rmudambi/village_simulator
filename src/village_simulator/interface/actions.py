@@ -3,9 +3,8 @@ from typing import Any
 import numpy as np
 from vivarium import InteractiveContext
 
+from village_simulator.constants import Columns
 from village_simulator.interface.utilities import make_bold
-from village_simulator.simulation.components.map import X, Y, TERRAIN
-from village_simulator.simulation.components.village import IS_VILLAGE
 
 
 def step(simulation: InteractiveContext, **_: Any) -> str:
@@ -25,7 +24,7 @@ def show_map(simulation: InteractiveContext, user_input: str, **kwargs: Any) -> 
     """Display the map."""
 
     if user_input == "mv":
-        mapped_column = IS_VILLAGE
+        mapped_column = Columns.IS_VILLAGE
         cell_width = 3
         formatter = {
             True: "[bold green] V [/bold green]",
@@ -33,7 +32,7 @@ def show_map(simulation: InteractiveContext, user_input: str, **kwargs: Any) -> 
         }
 
     elif user_input == "mt":
-        mapped_column = TERRAIN
+        mapped_column = Columns.TERRAIN
         cell_width = 3
         formatter = {
             "mountain": "[bold blue] M [/bold blue]",
@@ -45,15 +44,17 @@ def show_map(simulation: InteractiveContext, user_input: str, **kwargs: Any) -> 
     else:
         return make_bold("\nAvailable map modes are 'mv' (village) and 'mt' (terrain).\n\n")
 
-    coordinates = simulation.get_population()[[X, Y, mapped_column]].reset_index()
+    coordinates = simulation.get_population()[
+        [Columns.X, Columns.Y, mapped_column]
+    ].reset_index()
 
     # Determine the maximum x and y coordinates to define the grid size
-    max_x = coordinates[X].max() + 1
-    max_y = coordinates[Y].max() + 1
+    max_x = coordinates[Columns.X].max() + 1
+    max_y = coordinates[Columns.Y].max() + 1
 
     # Create a grid and fill it with the index values
     grid = np.full((max_y, max_x), "-", dtype="object")
-    grid[coordinates[Y].values, coordinates[X].values] = (
+    grid[coordinates[Columns.Y].values, coordinates[Columns.X].values] = (
         coordinates[mapped_column].map(formatter).values
     )
 
